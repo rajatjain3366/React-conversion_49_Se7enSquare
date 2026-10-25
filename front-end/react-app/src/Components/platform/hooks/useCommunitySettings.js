@@ -193,11 +193,12 @@ export default function useCommunitySettings() {
 
       // Normalise channels to plain objects the backend can store
       const parsedChannels = Array.isArray(community.channels)
-        ? community.channels.map((ch) =>
-            typeof ch === 'string'
-              ? { name: ch, type: 'Text' }
-              : { name: ch.name, type: ch.type || 'Text' }
-          )
+        ? community.channels.map((ch, idx) => ({
+            id: ch.id ? String(ch.id) : (ch.name ? String(ch.name) : String(idx + 1)),
+            name: typeof ch === 'string' ? ch : ch.name,
+            type: (typeof ch === 'object' && ch.type) || 'Text',
+            topic: (typeof ch === 'object' && ch.topic) || `#${typeof ch === 'string' ? ch : ch.name} channel`,
+          }))
         : undefined;
 
       const res = await fetch(`${API_BASE}/communities/${communityId}`, {
@@ -219,8 +220,21 @@ export default function useCommunitySettings() {
         return;
       }
 
+      const saved = await res.json().catch(() => null);
+      if (saved) {
+        const updated = {
+          ...community,
+          ...saved,
+          rules: Array.isArray(saved.rules) ? saved.rules.join('\n') : (saved.rules || community.rules),
+          channels: Array.isArray(saved.channels) ? saved.channels : community.channels,
+        };
+        setCommunity(updated);
+        setInitialCommunity(updated);
+      } else {
+        setInitialCommunity({ ...community });
+      }
+
       showToast('✅ Community settings saved successfully!');
-      setInitialCommunity({ ...community });
       markClean();
     } catch (err) {
       showToast(`⚠️ ${err.message || 'Could not save settings'}`);

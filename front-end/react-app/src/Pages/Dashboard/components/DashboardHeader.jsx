@@ -98,7 +98,10 @@ export default function DashboardHeader({
           style={{ cursor: 'pointer' }}
           onClick={() => navigate('/profile-settings')}
         >
-          {(user.firstName?.[0] || '') + (user.lastName?.[0] || '')}
+          {(
+            (user?.firstName?.[0] || user?.username?.[0] || user?.name?.[0] || 'U') +
+            (user?.lastName?.[0] || '')
+          ).toUpperCase()}
         </div>
       </div>
     </header>

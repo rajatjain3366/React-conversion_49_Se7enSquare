@@ -149,7 +149,6 @@ export default function AdminDashboard() {
         {activePage === 'overview' && (
           <OverviewTab
             stats={stats}
-            openReportsCount={stats.escalatedReports}
             onNavigate={handleSelectPage}
           />
         )}

@@ -5,11 +5,14 @@ import { UpdateEventDto } from './dto/update-event.dto';
 
 @Injectable()
 export class EventsService {
-  findAll(status?: string): EventRecord[] {
+  findAll(status?: string, includeSuspended = false): EventRecord[] {
     const suspendedCommIds = new Set(
       db.communities.filter((c) => c.status === 'suspended').map((c) => c.id),
     );
-    let list = db.events.filter((item) => !suspendedCommIds.has(item.communityId));
+    let list = db.events;
+    if (!includeSuspended) {
+      list = list.filter((item) => !suspendedCommIds.has(item.communityId));
+    }
     if (status) {
       return list.filter((item) => item.status === status);
     }

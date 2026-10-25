@@ -4,9 +4,25 @@ import React from 'react';
  * UpcomingEvents Component
  * Renders upcoming community events with quick navigation to events schedule.
  */
-export default function UpcomingEvents({ events, navigate }) {
+export default function UpcomingEvents({ events = [], navigate }) {
+  const parseDate = (dateStr) => {
+    if (!dateStr) return { mon: 'UP', day: '••' };
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return {
+        mon: d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+        day: String(d.getDate()).padStart(2, '0'),
+      };
+    }
+    const parts = String(dateStr).split(' ');
+    return {
+      mon: (parts[0] || 'EV').slice(0, 3).toUpperCase(),
+      day: parts[1] || '••',
+    };
+  };
+
   return (
-    <div>
+    <div className="section-box">
       <div className="section-header">
         <div className="section-title">📅 Upcoming Events</div>
         <div className="section-link" style={{ cursor: 'pointer' }} onClick={() => navigate('/events')}>
@@ -15,49 +31,35 @@ export default function UpcomingEvents({ events, navigate }) {
       </div>
       <div className="event-list">
         {events.length === 0 ? (
-          <div style={{ color: 'var(--text-3,#888)', fontSize: '13px', padding: '24px 0', textAlign: 'center' }}>
-            No upcoming events scheduled.
+          <div className="dash-empty-state">
+            <span className="dash-empty-icon">🎮</span>
+            <div className="dash-empty-title">No upcoming events</div>
+            <div className="dash-empty-desc">Tournaments and community nights you join will appear here.</div>
           </div>
         ) : (
-          events.map((ev) => (
-            <div
-              key={ev.id}
-              className="event-item"
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                padding: '12px 0',
-                borderBottom: '1px solid var(--border,rgba(255,255,255,0.05))',
-                cursor: 'pointer',
-              }}
-              onClick={() => navigate('/events')}
-            >
+          events.map((ev) => {
+            const { mon, day } = parseDate(ev.date);
+            return (
               <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: 'rgba(99,102,241,0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '20px',
-                  flexShrink: 0,
-                }}
+                key={ev.id}
+                className="dash-event-card"
+                onClick={() => navigate('/events')}
               >
-                {ev.type}
-              </div>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-1,#fff)' }}>
-                  {ev.title}
+                <div className="dash-event-date">
+                  <span className="dash-event-mon">{mon}</span>
+                  <span className="dash-event-day">{day}</span>
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-3,#666)', marginTop: '3px' }}>
-                  {ev.community} · {ev.date} {ev.time && `· ${ev.time}`}
+                <div className="dash-event-info">
+                  <div className="dash-event-title">{ev.title}</div>
+                  <div className="dash-event-meta">
+                    <span className="dash-event-comm">{ev.community}</span>
+                    {ev.time && <span className="dash-event-time">· {ev.time}</span>}
+                  </div>
                 </div>
+                <div className="dash-event-arrow">→</div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

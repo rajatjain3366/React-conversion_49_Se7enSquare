@@ -14,12 +14,32 @@ export default function useAppeal() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawUser = authService.getCurrentUser();
-  const user = {
+  const [user, setUser] = useState({
     role: rawUser?.role || 'user',
     firstName: rawUser?.firstName || 'User',
     username: rawUser?.username || 'user',
     id: rawUser?.id || null,
-  };
+    status: rawUser?.status || 'active',
+    statusReason: rawUser?.statusReason || '',
+  });
+
+  // Fetch full profile to get up-to-date status & reason
+  useEffect(() => {
+    if (!rawUser?.id) return;
+    apiRequest('/users/me')
+      .then(profile => {
+        if (profile) {
+          setUser(prev => ({
+            ...prev,
+            status: profile.status || 'active',
+            statusReason: profile.statusReason || '',
+            username: profile.username || prev.username,
+            firstName: profile.firstName || prev.firstName,
+          }));
+        }
+      })
+      .catch(() => { /* keep session data */ });
+  }, [rawUser?.id]);
 
   // Extract restriction details from URL (set on login redirect) or fetch from API
   const [action, setAction] = useState(() => {

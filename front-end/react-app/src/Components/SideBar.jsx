@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { getHomeRoute } from '../services/roleAccess';
 import '../styles/sidebar.css';
@@ -103,6 +103,7 @@ function getCurrentUser() {
 }
 
 export default function SideBar() {
+  const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('nexus_sidebar_collapsed') === 'true'
@@ -143,7 +144,17 @@ export default function SideBar() {
     >
       {/* Brand Header */}
       <div className="sb-brand">
-        <Link to={getHomeRoute(role)} className="sb-brand__logo" style={{ textDecoration: 'none' }}>
+        <Link
+          to={getHomeRoute(role)}
+          onClick={(e) => {
+            e.preventDefault();
+            const freshRole = authService.getCurrentUser()?.role || localStorage.getItem('role') || role;
+            navigate(getHomeRoute(freshRole));
+          }}
+          className="sb-brand__logo"
+          style={{ textDecoration: 'none', cursor: 'pointer' }}
+          title={`Go to ${meta.tier} Home`}
+        >
           <span className="sb-brand__icon">🎮</span>
           {!collapsed && <span className="sb-brand__name">Gameunity</span>}
         </Link>

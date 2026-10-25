@@ -1,4 +1,301 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+
+/**
+ * Communities breakdown subcomponent with Active / Suspended / All tab filtering.
+ */
+function CommunitiesDrilldown({ communities = [], users = [], loadError = '' }) {
+  const [filter, setFilter] = useState('active');
+
+  const usersById = useMemo(
+    () => new Map((Array.isArray(users) ? users : []).map((u) => [String(u.id), u])),
+    [users]
+  );
+
+  const activeCommunities = useMemo(
+    () => (Array.isArray(communities) ? communities : []).filter((c) => (c.status || 'active').toLowerCase() !== 'suspended'),
+    [communities]
+  );
+
+  const suspendedCommunities = useMemo(
+    () => (Array.isArray(communities) ? communities : []).filter((c) => (c.status || 'active').toLowerCase() === 'suspended'),
+    [communities]
+  );
+
+  const displayed = useMemo(() => {
+    if (filter === 'active') return activeCommunities;
+    if (filter === 'suspended') return suspendedCommunities;
+    return Array.isArray(communities) ? communities : [];
+  }, [filter, activeCommunities, suspendedCommunities, communities]);
+
+  return (
+    <div>
+      {/* Filter Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setFilter('active')}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: filter === 'active' ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)',
+            background: filter === 'active' ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+            color: filter === 'active' ? '#60a5fa' : 'var(--text-3, #9ca3af)',
+            transition: 'all 0.2s',
+          }}
+        >
+          Active ({activeCommunities.length})
+        </button>
+
+        {suspendedCommunities.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setFilter('suspended')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: filter === 'suspended' ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+              background: filter === 'suspended' ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)',
+              color: filter === 'suspended' ? '#f87171' : 'var(--text-3, #9ca3af)',
+              transition: 'all 0.2s',
+            }}
+          >
+            Suspended ({suspendedCommunities.length})
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setFilter('all')}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: filter === 'all' ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+            background: filter === 'all' ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.05)',
+            color: filter === 'all' ? '#c084fc' : 'var(--text-3, #9ca3af)',
+            transition: 'all 0.2s',
+          }}
+        >
+          All ({communities.length})
+        </button>
+      </div>
+
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Owner</th>
+              <th>Members</th>
+              <th>Category</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayed.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3,#888)' }}>
+                  {loadError ? `⚠️ Could not load: ${loadError}` : `No ${filter} communities found.`}
+                </td>
+              </tr>
+            ) : (
+              displayed.map((c) => {
+                const owner = usersById.get(String(c.ownerId));
+                const isSuspended = (c.status || '').toLowerCase() === 'suspended';
+                return (
+                  <tr key={c.id}>
+                    <td>
+                      <div className="row-name">{c.icon || '🏘️'} {c.name}</div>
+                      {isSuspended && c.suspendedReason && (
+                        <div className="row-sub" style={{ fontSize: '11px', color: '#f87171' }}>
+                          Reason: {c.suspendedReason}
+                        </div>
+                      )}
+                    </td>
+                    <td>{owner?.username || `user#${c.ownerId ?? '—'}`}</td>
+                    <td>{(c.memberCount || 0).toLocaleString()}</td>
+                    <td>{c.category || 'Gaming'}</td>
+                    <td>
+                      <span className={`badge badge-${isSuspended ? 'rejected' : 'active'}`}>
+                        {c.status || 'active'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Events overview subcomponent with Active / In Suspended Community / All tab filtering.
+ */
+function EventsDrilldown({ events = [], communities = [], loadError = '' }) {
+  const [filter, setFilter] = useState('active');
+
+  const commsById = useMemo(
+    () => new Map((Array.isArray(communities) ? communities : []).map((c) => [String(c.id), c])),
+    [communities]
+  );
+
+  const suspendedCommIds = useMemo(() => {
+    const ids = new Set();
+    (Array.isArray(communities) ? communities : []).forEach((c) => {
+      if ((c.status || '').toLowerCase() === 'suspended') {
+        ids.add(String(c.id));
+      }
+    });
+    return ids;
+  }, [communities]);
+
+  const activeEvents = useMemo(
+    () => (Array.isArray(events) ? events : []).filter((e) => !suspendedCommIds.has(String(e.communityId))),
+    [events, suspendedCommIds]
+  );
+
+  const suspendedCommEvents = useMemo(
+    () => (Array.isArray(events) ? events : []).filter((e) => suspendedCommIds.has(String(e.communityId))),
+    [events, suspendedCommIds]
+  );
+
+  const displayed = useMemo(() => {
+    const list = filter === 'active'
+      ? activeEvents
+      : filter === 'in_suspended'
+      ? suspendedCommEvents
+      : (Array.isArray(events) ? events : []);
+    return [...list].sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [filter, activeEvents, suspendedCommEvents, events]);
+
+  return (
+    <div>
+      {/* Filter Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setFilter('active')}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: filter === 'active' ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+            background: filter === 'active' ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)',
+            color: filter === 'active' ? '#34d399' : 'var(--text-3, #9ca3af)',
+            transition: 'all 0.2s',
+          }}
+        >
+          Active Events ({activeEvents.length})
+        </button>
+
+        {suspendedCommEvents.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setFilter('in_suspended')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: filter === 'in_suspended' ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
+              background: filter === 'in_suspended' ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.05)',
+              color: filter === 'in_suspended' ? '#fbbf24' : 'var(--text-3, #9ca3af)',
+              transition: 'all 0.2s',
+            }}
+          >
+            In Suspended Comm. ({suspendedCommEvents.length})
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setFilter('all')}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: filter === 'all' ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+            background: filter === 'all' ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.05)',
+            color: filter === 'all' ? '#c084fc' : 'var(--text-3, #9ca3af)',
+            transition: 'all 0.2s',
+          }}
+        >
+          All ({events.length})
+        </button>
+      </div>
+
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Community</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayed.length === 0 ? (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3,#888)' }}>
+                  {loadError ? `⚠️ Could not load: ${loadError}` : 'No events found.'}
+                </td>
+              </tr>
+            ) : (
+              displayed.map((e) => {
+                const comm = commsById.get(String(e.communityId));
+                const isCommSuspended = (comm?.status || '').toLowerCase() === 'suspended';
+                return (
+                  <tr key={e.id}>
+                    <td>
+                      <div className="row-name">{e.title}</div>
+                      <div className="row-sub" style={{ fontSize: '11.5px', color: 'var(--text-3,#888)' }}>
+                        {e.type || 'event'}{e.entryFee ? ` · ₹${e.entryFee} entry` : ''}
+                      </div>
+                    </td>
+                    <td>
+                      {comm?.name || `Community #${e.communityId ?? '—'}`}
+                      {isCommSuspended && (
+                        <span
+                          className="badge badge-rejected"
+                          style={{ fontSize: '10px', marginLeft: '6px', padding: '2px 6px' }}
+                        >
+                          Suspended Comm
+                        </span>
+                      )}
+                    </td>
+                    <td>{e.date}{e.time ? ` · ${e.time}` : ''}</td>
+                    <td>
+                      <span className={`badge badge-${e.status || 'pending'}`}>
+                        {e.status || 'pending'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Drill-down modal for OwnerDashboard.
@@ -22,59 +319,22 @@ export default function SubscriptionsTab({ drillModalOpen, drillTitle, drillLoad
     }
 
     if (drillContent.kind === 'communities') {
-      const { communities = [], users = [], loadError = '' } = drillContent;
-      const usersById = new Map((Array.isArray(users) ? users : []).map((u) => [String(u.id), u]));
       return (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead><tr><th>Name</th><th>Owner</th><th>Members</th><th>Category</th></tr></thead>
-            <tbody>
-              {communities.length === 0 ? (
-                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3,#888)' }}>{loadError ? `⚠️ Could not load: ${loadError}` : 'No communities yet.'}</td></tr>
-              ) : communities.map((c) => {
-                const owner = usersById.get(String(c.ownerId));
-                return (
-                  <tr key={c.id}>
-                    <td><div className="row-name">{c.icon || '🏘️'} {c.name}</div></td>
-                    <td>{owner?.username || `user#${c.ownerId ?? '—'}`}</td>
-                    <td>{(c.memberCount || 0).toLocaleString()}</td>
-                    <td>{c.category || 'Gaming'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <CommunitiesDrilldown
+          communities={drillContent.communities}
+          users={drillContent.users}
+          loadError={drillContent.loadError}
+        />
       );
     }
 
     if (drillContent.kind === 'events') {
-      const { events = [], communities = [], loadError = '' } = drillContent;
-      const commsById = new Map((Array.isArray(communities) ? communities : []).map((c) => [String(c.id), c]));
-      const sorted = [...events].sort((a, b) => new Date(b.date) - new Date(a.date));
       return (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead><tr><th>Title</th><th>Community</th><th>Date</th><th>Status</th></tr></thead>
-            <tbody>
-              {sorted.length === 0 ? (
-                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-3,#888)' }}>{loadError ? `⚠️ Could not load: ${loadError}` : 'No events yet.'}</td></tr>
-              ) : sorted.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <div className="row-name">{e.title}</div>
-                    <div className="row-sub" style={{ fontSize: '11.5px', color: 'var(--text-3,#888)' }}>
-                      {e.type || 'event'}{e.entryFee ? ` · ₹${e.entryFee} entry` : ''}
-                    </div>
-                  </td>
-                  <td>{commsById.get(String(e.communityId))?.name || `Community #${e.communityId ?? '—'}`}</td>
-                  <td>{e.date}{e.time ? ` · ${e.time}` : ''}</td>
-                  <td><span className={`badge badge-${e.status || 'pending'}`}>{e.status || 'pending'}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <EventsDrilldown
+          events={drillContent.events}
+          communities={drillContent.communities}
+          loadError={drillContent.loadError}
+        />
       );
     }
 

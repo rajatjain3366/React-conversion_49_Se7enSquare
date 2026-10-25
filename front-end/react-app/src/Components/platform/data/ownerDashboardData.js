@@ -1,6 +1,10 @@
 export const DEFAULT_STATS = {
   totalCommunities: 0,
+  allCommunitiesCount: 0,
+  suspendedCommunitiesCount: 0,
   totalEvents: 0,
+  allEventsCount: 0,
+  suspendedEventsCount: 0,
   pendingReportsCount: 0,
   pendingEventsCount: 0,
   pendingAppealsCount: 0,
@@ -23,10 +27,8 @@ export const DEFAULT_REVENUE = {
 export const REVENUE_CARDS = [
   { key: 'totalRevenue', icon: '💰', bg: 'bg-green', label: 'Total Revenue', drillKind: 'revenue', prefix: '₹' },
   { key: 'monthlyRevenue', icon: '📈', bg: 'bg-purple', label: 'Monthly Revenue', drillKind: 'revenue', prefix: '₹' },
-  { key: 'subscriptionRevenue', icon: '💎', bg: 'bg-cyan', label: 'Subscription Revenue', drillKind: 'subscriptions', prefix: '₹' },
   { key: 'organiserRevenue', icon: '🏆', bg: 'bg-orange', label: 'Organizer Revenue', drillKind: 'revenue', prefix: '₹' },
   { key: 'featuredEventRevenue', icon: '📣', bg: 'bg-green', label: 'Featured Event Revenue', drillKind: 'revenue', prefix: '₹' },
-  { key: 'premiumUsers', icon: '👑', bg: 'bg-purple', label: 'Active Premium Users', drillKind: 'subscriptions', prefix: '' },
   { key: 'verifiedOrganisers', icon: '✅', bg: 'bg-cyan', label: 'Verified Organizers', drillKind: 'organisers', drillFilter: 'verified', prefix: '' },
   { key: 'pendingOrganiserApplications', icon: '⏳', bg: 'bg-orange', label: 'Pending Organizer Applications', drillKind: 'organisers', drillFilter: 'pending', prefix: '' },
 ];

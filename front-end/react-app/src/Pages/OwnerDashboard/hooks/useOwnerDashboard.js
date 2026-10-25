@@ -39,7 +39,11 @@ export default function useOwnerDashboard() {
         if (data) {
           setStats({
             totalCommunities: data.totalCommunities || 0,
+            allCommunitiesCount: data.allCommunitiesCount ?? data.totalCommunities ?? 0,
+            suspendedCommunitiesCount: data.suspendedCommunitiesCount || 0,
             totalEvents: data.totalEvents || 0,
+            allEventsCount: data.allEventsCount ?? data.totalEvents ?? 0,
+            suspendedEventsCount: data.suspendedEventsCount || 0,
             pendingReportsCount: data.pendingReportsCount || 0,
             pendingEventsCount: data.pendingEventsCount || 0,
             pendingAppealsCount: data.pendingAppealsCount || 0,
@@ -102,7 +106,7 @@ export default function useOwnerDashboard() {
         let loadError = '';
         try {
           const [evts, comms] = await Promise.all([
-            apiRequest('/events'),
+            apiRequest('/events?includeSuspended=true'),
             apiRequest('/communities'),
           ]);
           events = Array.isArray(evts) ? evts : [];

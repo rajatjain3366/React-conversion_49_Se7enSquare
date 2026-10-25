@@ -16,7 +16,7 @@ export default function ProfileSettings() {
   return <div className="app-shell"><SideBar /><div className="main-column-wrapper">
     <ProfileHeaderBar formData={p.formData} isDirty={p.isDirty} canDiscard={p.canDiscard} saving={p.saving || p.loading} initials={p.initials} onDiscard={p.discardChanges} onSave={p.saveAllChanges} onLogout={p.handleLogout} userRole={p.user?.role} />
     {p.loading ? <p role="status">Loading your profile…</p> : <div className="body-wrap">
-      {p.user && <ProfileNav formData={p.formData} initials={p.initials} activeTab={p.activeTab} onSelectTab={p.setActiveTab} />}
+      {p.user && <ProfileNav formData={p.formData} initials={p.initials} activeTab={p.activeTab} onSelectTab={p.setActiveTab} userRole={p.user?.role} />}
       <div className="main">
         {p.user?.status && p.user.status !== 'active' && (
           <div
@@ -64,15 +64,101 @@ export default function ProfileSettings() {
             </button>
           </div>
         )}
-        {p.errors.length > 0 && <div role="alert" className="profile-error"><ul>{p.errors.map((error, i) => <li key={i}>{error}</li>)}</ul></div>}
-        {p.toastMsg && <p role="status">{p.toastMsg}</p>}
-        {p.user && <fieldset className="profile-fields" disabled={p.saving}>
-          {p.activeTab === 'profile' && <MyProfileTab formData={p.formData} initials={p.initials} avatarPreview={p.avatarPreview} onInputChange={p.handleInputChange} onAvatarUpload={p.handleAvatarUpload} onRemovePhoto={p.removePhoto} />}
-          {p.activeTab === 'account' && <AccountSecurityTab user={p.user} formData={p.formData} onInputChange={p.handleInputChange} passwords={p.passwords} setPasswords={p.setPasswords} showPassword={p.showPassword} setShowPassword={p.setShowPassword} />}
-          {p.activeTab === 'privacy' && <PrivacyTab privacy={p.privacy} setPrivacy={p.setPrivacy} />}
-          {p.activeTab === 'membership' && <MembershipTab p={p} />}
-          {p.activeTab === 'danger' && <DangerZoneTab navigate={p.navigate} onShowToast={p.showToast} onLogout={p.handleLogout} />}
-        </fieldset>}
+        {p.errors.length > 0 && (
+          <div
+            role="alert"
+            style={{
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              color: '#fca5a5',
+              padding: '12px 16px',
+              borderRadius: '10px',
+              marginBottom: '18px',
+              fontSize: '13px',
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: '4px' }}>⚠️ Please correct the following:</div>
+            <ul style={{ margin: '0 0 0 16px', padding: 0 }}>
+              {p.errors.map((error, i) => <li key={i}>{error}</li>)}
+            </ul>
+          </div>
+        )}
+        {p.toastMsg && (
+          <div
+            role="status"
+            style={{
+              background: 'rgba(34, 197, 94, 0.12)',
+              border: '1px solid rgba(34, 197, 94, 0.35)',
+              color: '#4ade80',
+              padding: '12px 16px',
+              borderRadius: '10px',
+              marginBottom: '18px',
+              fontSize: '13.5px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>{p.toastMsg}</span>
+            <button
+              type="button"
+              onClick={() => p.showToast('')}
+              style={{ background: 'none', border: 'none', color: '#4ade80', cursor: 'pointer', fontSize: '16px' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {p.user && (
+          <fieldset className="profile-fields" disabled={p.saving} style={{ border: 'none', padding: 0, margin: 0 }}>
+            {p.activeTab === 'profile' && (
+              <MyProfileTab
+                formData={p.formData}
+                initials={p.initials}
+                avatarPreview={p.avatarPreview}
+                onInputChange={p.handleInputChange}
+                onAvatarUpload={p.handleAvatarUpload}
+                onRemovePhoto={p.removePhoto}
+                isDirty={p.isDirty}
+                canDiscard={p.canDiscard}
+                saving={p.saving}
+                onSave={p.saveAllChanges}
+                onDiscard={p.discardChanges}
+              />
+            )}
+            {p.activeTab === 'account' && (
+              <AccountSecurityTab
+                user={p.user}
+                formData={p.formData}
+                onInputChange={p.handleInputChange}
+                passwords={p.passwords}
+                setPasswords={p.setPasswords}
+                showPassword={p.showPassword}
+                setShowPassword={p.setShowPassword}
+                isDirty={p.isDirty}
+                canDiscard={p.canDiscard}
+                saving={p.saving}
+                onSave={p.saveAllChanges}
+                onDiscard={p.discardChanges}
+                onChangePassword={p.changeUserPassword}
+              />
+            )}
+            {p.activeTab === 'privacy' && (
+              <PrivacyTab
+                privacy={p.privacy}
+                setPrivacy={p.setPrivacy}
+                isDirty={p.isDirty}
+                canDiscard={p.canDiscard}
+                saving={p.saving}
+                onSave={p.saveAllChanges}
+                onDiscard={p.discardChanges}
+              />
+            )}
+            {p.activeTab === 'membership' && <MembershipTab p={p} />}
+            {p.activeTab === 'danger' && <DangerZoneTab navigate={p.navigate} onShowToast={p.showToast} onLogout={p.handleLogout} />}
+          </fieldset>
+        )}
       </div>
     </div>}
   </div></div>;

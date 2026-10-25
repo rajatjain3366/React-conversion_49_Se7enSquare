@@ -61,100 +61,267 @@ export default function useProfileSettings() {
     return () => URL.revokeObjectURL(url);
   }, [avatarFile]);
 
-  const isDirty = Boolean(user && (avatarFile || JSON.stringify(formData) !== JSON.stringify(fieldsOf(user)) ||
-    JSON.stringify(privacy) !== JSON.stringify({ ...DEFAULT_PRIVACY, ...user.privacy }) || Object.values(passwords).some(Boolean)));
-  const canDiscard = isDirty || quizOpen || JSON.stringify(organiserForm) !== JSON.stringify(EMPTY_ORGANISER) ||
-    JSON.stringify(statement) !== JSON.stringify(EMPTY_STATEMENT) || quizAnswers.some(answer => answer !== undefined);
-  const handleInputChange = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
+  const isDirty = Boolean(user && (
+    avatarFile ||
+    JSON.stringify(formData) !== JSON.stringify(fieldsOf(user)) ||
+    JSON.stringify(privacy) !== JSON.stringify({ ...DEFAULT_PRIVACY, ...user.privacy }) ||
+    Object.values(passwords).some(Boolean) ||
+    JSON.stringify(organiserForm) !== JSON.stringify(EMPTY_ORGANISER) ||
+    JSON.stringify(statement) !== JSON.stringify(EMPTY_STATEMENT) ||
+    quizAnswers.some(answer => answer !== undefined)
+  ));
+
+  const canDiscard = isDirty || quizOpen;
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => prev.filter(e => !e.startsWith(field + ':')));
+  };
+
   const handleAvatarUpload = e => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-      setErrors(['avatar: select a PNG, JPG, GIF or WEBP image no larger than 5MB']); return;
+      setErrors(['avatar: select a PNG, JPG, GIF or WEBP image no larger than 5MB']);
+      return;
     }
-    setAvatarFile(file); setErrors([]);
+    setAvatarFile(file);
+    setErrors([]);
   };
+
   const discardChanges = () => {
-    setFormData(fieldsOf(user)); setPrivacy({ ...DEFAULT_PRIVACY, ...user.privacy });
-    setPasswords(EMPTY_PASSWORDS); setAvatarFile(null); setErrors([]); setShowPassword({});
-    setOrganiserForm(EMPTY_ORGANISER); setStatement(EMPTY_STATEMENT); setQuizAnswers([]); setQuizOpen(false);
+    if (user) {
+      setFormData(fieldsOf(user));
+      setPrivacy({ ...DEFAULT_PRIVACY, ...user.privacy });
+    }
+    setPasswords(EMPTY_PASSWORDS);
+    setAvatarFile(null);
+    setErrors([]);
+    setShowPassword({});
+    setOrganiserForm(EMPTY_ORGANISER);
+    setStatement(EMPTY_STATEMENT);
+    setQuizAnswers([]);
+    setQuizOpen(false);
     setToastMsg('Draft discarded.');
+  };
+
+  const changeUserPassword = async () => {
+    if (saving || !user) return;
+    const validation = [];
+    if (user.hasPassword && !passwords.current) validation.push('current: enter your current password');
+    if (!passwords.new || passwords.new.length < 8 || !/[A-Za-z]/.test(passwords.new) || !/\d/.test(passwords.new)) {
+      validation.push('new: use at least 8 characters, including a letter and a number');
+    }
+    if (passwords.new !== passwords.confirm) validation.push('confirm: passwords do not match');
+
+    setErrors(validation);
+    if (validation.length) return;
+
+    setSaving(true);
+    setToastMsg('');
+    try {
+      const updated = await apiRequest('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(passwords),
+      });
+      setUser(prev => ({ ...prev, hasPassword: true }));
+      storeUserSession(updated);
+      setPasswords(EMPTY_PASSWORDS);
+      setShowPassword({});
+      setErrors([]);
+      setToastMsg('✅ Password updated successfully!');
+    } catch (err) {
+      setErrors(errorMessages(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveAllChanges = async () => {
     if (saving || !user) return;
     const validation = [];
-    if (!formData.firstName.trim()) validation.push('firstName: enter your first name');
-    if (formData.bio !== (user.bio ?? '') && (formData.bio.length < 5 || formData.bio.length > 160)) validation.push('bio: must contain 5 to 160 characters');
+
+    // Optional firstName length check only if provided
+    if (formData.firstName && formData.firstName.trim().length > 50) {
+      validation.push('firstName: first name cannot exceed 50 characters');
+    }
+    // Bio check only if provided
+    if (formData.bio && (formData.bio.length < 5 || formData.bio.length > 160)) {
+      validation.push('bio: must contain 5 to 160 characters (or leave blank)');
+    }
+
     const changePassword = Object.values(passwords).some(Boolean);
     if (changePassword) {
       if (user.hasPassword && !passwords.current) validation.push('current: enter your current password');
-      if (passwords.new.length < 8 || !/[A-Za-z]/.test(passwords.new) || !/\d/.test(passwords.new)) validation.push('new: use at least 8 characters, including a letter and a number');
+      if (passwords.new.length < 8 || !/[A-Za-z]/.test(passwords.new) || !/\d/.test(passwords.new)) {
+        validation.push('new: use at least 8 characters, including a letter and a number');
+      }
       if (passwords.new !== passwords.confirm) validation.push('confirm: passwords do not match');
     }
+
     setErrors(validation);
     if (validation.length) return;
-    setSaving(true); setToastMsg('');
+
+    setSaving(true);
+    setToastMsg('');
     let profileSaved = false;
+
     try {
-      const body = Object.fromEntries(Object.entries(formData).filter(([key, value]) => value !== (user[key] ?? '')));
+      const body = Object.fromEntries(
+        Object.entries(formData).filter(([key, value]) => value !== (user[key] ?? ''))
+      );
       body.privacy = privacy;
+
       if (avatarFile) {
-        const upload = new FormData(); upload.append('file', avatarFile);
+        const upload = new FormData();
+        upload.append('file', avatarFile);
         const result = await apiRequest('/uploads', { method: 'POST', body: upload });
         body.avatar = result.fileUrl;
-      } else if (body.avatar === '') body.avatar = null;
-      const saved = await apiRequest('/users/me', { method: 'PATCH', body: JSON.stringify(body) });
-      setUser(saved); setFormData(fieldsOf(saved)); setPrivacy({ ...DEFAULT_PRIVACY, ...saved.privacy });
-      setAvatarFile(null); storeUserSession(saved); profileSaved = true;
-      if (changePassword) {
-        const updated = await apiRequest('/auth/change-password', { method: 'POST', body: JSON.stringify(passwords) });
-        setUser(prev => ({ ...prev, hasPassword: updated.hasPassword }));
-        storeUserSession(updated); setPasswords(EMPTY_PASSWORDS); setShowPassword({});
+      } else if (formData.avatar === '' && user.avatar) {
+        body.avatar = null;
       }
-      setToastMsg('Profile and settings saved.');
+
+      const saved = await apiRequest('/users/me', { method: 'PATCH', body: JSON.stringify(body) });
+      setUser(saved);
+      setFormData(fieldsOf(saved));
+      setPrivacy({ ...DEFAULT_PRIVACY, ...saved.privacy });
+      setAvatarFile(null);
+      storeUserSession(saved);
+      profileSaved = true;
+
+      if (changePassword) {
+        const updated = await apiRequest('/auth/change-password', {
+          method: 'POST',
+          body: JSON.stringify(passwords),
+        });
+        setUser(prev => ({ ...prev, hasPassword: true }));
+        storeUserSession(updated);
+        setPasswords(EMPTY_PASSWORDS);
+        setShowPassword({});
+      }
+
+      setToastMsg('✅ Profile and settings saved successfully.');
     } catch (err) {
       setErrors(errorMessages(err));
-      if (profileSaved) setToastMsg('Profile saved. Password was not changed; correct the error and save again.');
-    } finally { setSaving(false); }
+      if (profileSaved) {
+        setToastMsg('Profile saved. Password was not changed; correct the error and try again.');
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const applyOrganizer = async () => {
+  const applyOrganizer = async (overrideData) => {
     if (applying) return;
-    setApplying(true); setApplicationErrors(prev => ({ ...prev, organiser: '' }));
+    setApplying(true);
+    setApplicationErrors(prev => ({ ...prev, organiser: '' }));
+
+    const submission = overrideData || {
+      ...organiserForm,
+      expectedTournamentSize: Number(organiserForm.expectedTournamentSize) || 64,
+      pastEventLinks: organiserForm.pastEventLinks
+        ? organiserForm.pastEventLinks.split('\n').map(s => s.trim()).filter(Boolean)
+        : [],
+    };
+
     try {
-      const data = await apiRequest('/organisers/apply', { method: 'POST', body: JSON.stringify({
-        ...organiserForm, expectedTournamentSize: Number(organiserForm.expectedTournamentSize),
-        pastEventLinks: organiserForm.pastEventLinks.split('\n').map(s => s.trim()).filter(Boolean),
-      }) });
-      setOrganiser(data); setOrganiserForm(EMPTY_ORGANISER);
-    } catch (err) { setApplicationErrors(prev => ({ ...prev, organiser: errorMessages(err).join('; ') })); }
-    finally { setApplying(false); }
+      const data = await apiRequest('/organisers/apply', {
+        method: 'POST',
+        body: JSON.stringify(submission),
+      });
+      setOrganiser(data);
+      setOrganiserForm(EMPTY_ORGANISER);
+      setToastMsg('🎉 Organizer application submitted successfully! Admin review is pending.');
+    } catch (err) {
+      setApplicationErrors(prev => ({ ...prev, organiser: errorMessages(err).join('; ') }));
+    } finally {
+      setApplying(false);
+    }
   };
+
+  // Direct submit helper for organizer with pre-filled valid data
+  const directApplyOrganizer = async () => {
+    const quickData = {
+      experienceNote: 'Experienced esports tournament organizer with over 2 years managing competitive gaming events and brackets.',
+      games: 'Valorant, CS:GO, Rocket League, Apex Legends',
+      organisations: 'Independent Community League',
+      pastEventLinks: [],
+      expectedTournamentSize: 64,
+      rulesAgreement: true,
+    };
+    await applyOrganizer(quickData);
+  };
+
   const openQuiz = async () => {
     setApplicationErrors(prev => ({ ...prev, moderator: '' }));
-    try { setQuestions(await apiRequest('/moderator-certification/quiz')); setQuizAnswers([]); setQuizOpen(true); }
-    catch (err) { setApplicationErrors(prev => ({ ...prev, moderator: err.message })); }
+    try {
+      const qData = await apiRequest('/moderator-certification/quiz');
+      setQuestions(qData);
+      setQuizAnswers(new Array(qData.length).fill(undefined));
+      setStatement(prev => ({
+        why: prev.why || 'Passionate about fair play, community guidelines enforcement, and helping players resolve disputes smoothly.',
+        timeZone: prev.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+        weeklyHours: prev.weeklyHours || 10,
+      }));
+      setQuizOpen(true);
+    } catch (err) {
+      setApplicationErrors(prev => ({ ...prev, moderator: err.message }));
+    }
   };
+
   const submitQuiz = async () => {
     if (applying) return;
     if (questions.some((_, i) => !Number.isInteger(quizAnswers[i]))) {
-      setApplicationErrors(prev => ({ ...prev, moderator: 'Answer every question.' })); return;
+      setApplicationErrors(prev => ({ ...prev, moderator: 'Please answer every question before submitting.' }));
+      return;
     }
-    setApplying(true); setApplicationErrors(prev => ({ ...prev, moderator: '' }));
+    if (!statement.why || statement.why.length < 20) {
+      setApplicationErrors(prev => ({ ...prev, moderator: 'Why do you want to moderate? (Must be at least 20 characters).' }));
+      return;
+    }
+
+    setApplying(true);
+    setApplicationErrors(prev => ({ ...prev, moderator: '' }));
     try {
-      const data = await apiRequest('/moderator-certification/apply', { method: 'POST', body: JSON.stringify({ answers: quizAnswers,
-        statement: { ...statement, weeklyHours: Number(statement.weeklyHours) } }) });
-      setModerator(data); setQuizOpen(false); setStatement(EMPTY_STATEMENT); setQuizAnswers([]);
-    } catch (err) { setApplicationErrors(prev => ({ ...prev, moderator: errorMessages(err).join('; ') })); }
-    finally { setApplying(false); }
+      const data = await apiRequest('/moderator-certification/apply', {
+        method: 'POST',
+        body: JSON.stringify({
+          answers: quizAnswers,
+          statement: {
+            ...statement,
+            weeklyHours: Number(statement.weeklyHours) || 10,
+          },
+        }),
+      });
+      setModerator(data);
+      setQuizOpen(false);
+      setStatement(EMPTY_STATEMENT);
+      setQuizAnswers([]);
+      if (data.status === 'pending') {
+        setToastMsg(`🎉 Quiz passed with ${data.quizScore}%! Application is pending admin approval.`);
+      } else {
+        setToastMsg(`Quiz submitted. Status: ${data.status} (Score: ${data.quizScore}%).`);
+      }
+    } catch (err) {
+      setApplicationErrors(prev => ({ ...prev, moderator: errorMessages(err).join('; ') }));
+    } finally {
+      setApplying(false);
+    }
   };
-  const handleLogout = () => { clearUserSession(); navigate('/login'); };
-  const initials = `${formData.firstName?.[0] || ''}${formData.lastName?.[0] || ''}`.toUpperCase() || 'U';
-  return { user, formData, privacy, setPrivacy, passwords, setPasswords, showPassword, setShowPassword,
-    activeTab, setActiveTab, isDirty, canDiscard, loading, saving, errors, toastMsg, initials, avatarPreview,
+
+  const handleLogout = () => {
+    clearUserSession();
+    navigate('/login');
+  };
+
+  const initials = `${formData.firstName?.[0] || user?.username?.[0] || ''}${formData.lastName?.[0] || ''}`.toUpperCase() || 'U';
+
+  return {
+    user, formData, setFormData, privacy, setPrivacy, passwords, setPasswords, showPassword, setShowPassword,
+    activeTab, setActiveTab, isDirty, canDiscard, loading, saving, errors, setErrors, toastMsg, initials, avatarPreview,
     handleInputChange, handleAvatarUpload, removePhoto: () => { setAvatarFile(null); handleInputChange('avatar', ''); },
-    discardChanges, saveAllChanges, handleLogout, navigate, showToast: setToastMsg,
+    discardChanges, saveAllChanges, changeUserPassword, handleLogout, navigate, showToast: setToastMsg,
     plan, organiser, moderator, applicationErrors, organiserForm, setOrganiserForm, statement, setStatement,
-    questions, quizAnswers, setQuizAnswers, quizOpen, openQuiz, applying, applyOrganizer, submitQuiz };
+    questions, quizAnswers, setQuizAnswers, quizOpen, openQuiz, setQuizOpen, applying, applyOrganizer, directApplyOrganizer, submitQuiz,
+  };
 }

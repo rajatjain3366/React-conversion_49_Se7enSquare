@@ -21,6 +21,11 @@ export default function OwnerMetricsGrid({ stats, revenue, onDrill }) {
           <div className="stat-data">
             <div className="stat-value">{stats.totalCommunities}</div>
             <div className="stat-label">Communities</div>
+            {stats.suspendedCommunitiesCount > 0 && (
+              <div style={{ fontSize: '11px', color: 'var(--text-3, #9ca3af)', marginTop: '2px' }}>
+                {stats.totalCommunities} active · {stats.suspendedCommunitiesCount} suspended
+              </div>
+            )}
           </div>
         </div>
         <div
@@ -32,6 +37,11 @@ export default function OwnerMetricsGrid({ stats, revenue, onDrill }) {
           <div className="stat-data">
             <div className="stat-value">{stats.totalEvents}</div>
             <div className="stat-label">Total Events</div>
+            {stats.suspendedEventsCount > 0 && (
+              <div style={{ fontSize: '11px', color: 'var(--text-3, #9ca3af)', marginTop: '2px' }}>
+                {stats.totalEvents} active · {stats.suspendedEventsCount} in suspended comm.
+              </div>
+            )}
           </div>
         </div>
       </div>

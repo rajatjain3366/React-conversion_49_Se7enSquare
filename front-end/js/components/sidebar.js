@@ -142,12 +142,21 @@ function _renderSidebar(user) {
   const meta = ROLE_META[role] || ROLE_META.user;
   const sections = _getSections(role);
   const colClass = _collapsed ? ' collapsed' : '';
+  const homeRoutes = {
+    owner: 'owner-dashboard.html',
+    admin: 'admin-dashboard.html',
+    organizer: 'organizer-dashboard.html',
+    moderator: 'mod-panel.html',
+    community_manager: 'event-approval.html',
+    user: 'dashboard.html',
+  };
+  const homeUrl = homeRoutes[role] || 'dashboard.html';
 
   return `
     <div class="sb-backdrop" id="sbBackdrop" onclick="SidebarComponent.closeMobile()"></div>
     <nav class="nexus-sidebar${colClass}" id="nexusSidebar" aria-label="Main navigation" role="navigation">
       <div class="sb-brand">
-        <div class="sb-brand__logo" onclick="location.href='dashboard.html'" aria-label="Go to dashboard">
+        <div class="sb-brand__logo" onclick="location.href='${homeUrl}'" aria-label="Go to dashboard" style="cursor:pointer">
           <span class="sb-brand__icon">🎮</span>
           <span class="sb-brand__name">Gameunity</span>
         </div>

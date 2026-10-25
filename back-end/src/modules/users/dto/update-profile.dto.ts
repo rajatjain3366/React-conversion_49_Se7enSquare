@@ -35,13 +35,13 @@ export class UpdateProfileDto {
   lastName?: string;
 
   @ApiPropertyOptional({ minLength: 5, maxLength: 160, example: 'Loves MMORPG and FPS.' })
-  @ValidateIf((_, value) => value !== undefined)
+  @ValidateIf((_, value) => value !== undefined && value !== '' && value !== null)
   @IsString()
   @Length(5, 160)
   bio?: string;
 
   @ApiPropertyOptional({ example: '+91 98765 43210' })
-  @ValidateIf((_, value) => value !== undefined)
+  @ValidateIf((_, value) => value !== undefined && value !== '' && value !== null)
   @IsString()
   @MaxLength(30)
   phone?: string;

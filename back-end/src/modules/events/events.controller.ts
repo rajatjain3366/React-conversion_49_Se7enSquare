@@ -54,10 +54,19 @@ export class EventsController {
     example: 'upcoming',
     enum: ['pending', 'approved', 'rejected', 'cancelled'],
   })
+  @ApiQuery({
+    name: 'includeSuspended',
+    required: false,
+    description: 'Include events belonging to suspended communities',
+    type: Boolean,
+  })
   @ApiOkResponse({ type: EventDto, isArray: true, description: 'Array of event records' })
   @ApiForbiddenResponse({ description: 'Missing or invalid x-role header' })
-  findAll(@Query('status') status?: string) {
-    return this.eventsService.findAll(status);
+  findAll(
+    @Query('status') status?: string,
+    @Query('includeSuspended') includeSuspended?: string,
+  ) {
+    return this.eventsService.findAll(status, includeSuspended === 'true');
   }
 
   @Get(':id')

@@ -34,23 +34,10 @@ export function useEvents(initialCategory = 'all') {
     loadEvents();
   }, [loadEvents]);
 
-  // Derived approved upcoming events filtered by selected category and excluding current user's created events
+  // Derived approved upcoming events filtered by selected category
   const upcomingEvents = useMemo(() => {
-    const currentUser = getCurrentUser();
     return events
       .filter((e) => !e.status || e.status === EVENT_STATUSES.APPROVED)
-      .filter((e) => {
-        if (!currentUser) return true;
-        const isCreatedByMe =
-          (currentUser.id != null && (
-            Number(e.organiserId) === Number(currentUser.id) ||
-            Number(e.organizerId) === Number(currentUser.id) ||
-            Number(e.userId) === Number(currentUser.id)
-          )) ||
-          (currentUser.username && e.createdBy && String(e.createdBy).toLowerCase() === String(currentUser.username).toLowerCase()) ||
-          (currentUser.name && e.createdBy && String(e.createdBy).toLowerCase() === String(currentUser.name).toLowerCase());
-        return !isCreatedByMe;
-      })
       .filter((e) => {
         if (selectedCategory === 'all') return true;
         return (

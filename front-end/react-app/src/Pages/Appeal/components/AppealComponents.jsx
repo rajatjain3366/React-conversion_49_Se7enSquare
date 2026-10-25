@@ -33,26 +33,65 @@ export function AppealHeader({ navigate }) {
 /**
  * Action details card shown at the top of the appeal form.
  */
-export function ActionDetailsCard({ action }) {
-  if (!action) {
+export function ActionDetailsCard({ action, user }) {
+  if (action) {
     return (
       <div className="action-card" style={{ marginBottom: '20px' }}>
         <div className="action-header">
-          <div className="action-severity severity-ban">⚖️</div>
+          <div className="action-severity severity-ban">🚫</div>
           <div className="action-hinfo">
-            <div className="action-type">Account Standing & Appeal Overview</div>
-            <div className="action-community"><span>🛡️</span> Se7enSquare Trust & Safety</div>
+            <div className="action-type">{action.type || 'Moderation Action'}</div>
+            <div className="action-community">
+              <span>⚡</span> {action.community || 'Platform Enforcement'} · Issued by moderation system
+            </div>
           </div>
-          <span className="action-badge badge-temp">Active Standing</span>
+          <span className="action-badge badge-temp">Active Restriction</span>
         </div>
         <div className="action-details">
           <div className="detail-row">
-            <div className="detail-key">Policy Scope</div>
-            <div className="detail-val">Community Guidelines & Terms of Service</div>
+            <div className="detail-key">Reason on Record</div>
+            <div className="detail-val">{action.reason || 'Violation of community policies'}</div>
           </div>
           <div className="detail-row">
-            <div className="detail-key">Review Window</div>
-            <div className="detail-val">24–48 hours upon submission</div>
+            <div className="detail-key">Action ID</div>
+            <div className="detail-val mono">{action.id || 'SAN-PENDING'}</div>
+          </div>
+          {action.until && (
+            <div className="detail-row">
+              <div className="detail-key">Expires</div>
+              <div className="detail-val">{new Date(action.until).toLocaleDateString()}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const isRestricted = user?.status && user.status !== 'active';
+  if (isRestricted) {
+    const isBan = user.status === 'banned';
+    return (
+      <div className="action-card" style={{ marginBottom: '20px' }}>
+        <div className="action-header">
+          <div className="action-severity severity-ban">⚠️</div>
+          <div className="action-hinfo">
+            <div className="action-type">{isBan ? 'Account Ban' : 'Account Suspension'}</div>
+            <div className="action-community">
+              <span>🛡️</span> Gameunity Trust &amp; Safety · Status: {user.status.toUpperCase()}
+            </div>
+          </div>
+          <span className="action-badge badge-temp" style={{ background: 'rgba(239,68,68,0.2)', color: '#f87171' }}>
+            {user.status.toUpperCase()}
+          </span>
+        </div>
+        <div className="action-details">
+          <div className="detail-row">
+            <div className="detail-key">Account Status Reason</div>
+            <div className="detail-val">{user.statusReason || 'Violation of community standards and guidelines'}</div>
+          </div>
+          <div className="detail-row">
+            <div className="detail-key">Account Username</div>
+            <div className="detail-val mono">@{user.username || 'user'}</div>
           </div>
         </div>
       </div>
@@ -60,23 +99,27 @@ export function ActionDetailsCard({ action }) {
   }
 
   return (
-    <div className="action-card">
+    <div className="action-card" style={{ marginBottom: '20px' }}>
       <div className="action-header">
-        <div className="action-severity severity-ban">🚫</div>
+        <div className="action-severity" style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399' }}>✓</div>
         <div className="action-hinfo">
-          <div className="action-type">{action.type || 'Moderation Action'}</div>
-          <div className="action-community"><span>⚡</span> {action.community || 'Community'} · Issued by moderator</div>
+          <div className="action-type">Account Standing: Good Standing</div>
+          <div className="action-community"><span>🛡️</span> Gameunity Community Integrity</div>
         </div>
-        <span className="action-badge badge-temp">Active Action</span>
+        <span className="action-badge badge-temp" style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399' }}>
+          Active Account
+        </span>
       </div>
       <div className="action-details">
         <div className="detail-row">
-          <div className="detail-key">Reason Given</div>
-          <div className="detail-val">{action.reason || 'Guidelines violation'}</div>
+          <div className="detail-key">Status Note</div>
+          <div className="detail-val">
+            Your account currently has no active bans or suspensions. You can use this form to contest specific warnings, mutes, content removals, or report decisions.
+          </div>
         </div>
         <div className="detail-row">
-          <div className="detail-key">Action ID</div>
-          <div className="detail-val mono">{action.id || 'ACT-PENDING'}</div>
+          <div className="detail-key">Review Window</div>
+          <div className="detail-val">Appeals are reviewed by administrators within 24–48 hours.</div>
         </div>
       </div>
     </div>

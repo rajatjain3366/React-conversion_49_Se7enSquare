@@ -38,10 +38,10 @@ export class CreateCommunityDto {
   @Length(2, 20, { each: true })
   tags!: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ['general', 'fps-chat'], description: 'Channels created in the community wizard' })
+  @ApiPropertyOptional({ type: [Object], example: [{ id: 'general', name: 'general', type: 'Text', topic: 'General discussion' }], description: 'Channels created in the community wizard or settings' })
   @IsOptional()
   @IsArray()
-  channels?: Array<string | { id?: string; name: string; type?: string }>;
+  channels?: Array<string | { id?: string; name: string; type?: string; topic?: string }>;
 
   @ApiPropertyOptional({ example: '/uploads/1234-banner.png' })
   @IsOptional()

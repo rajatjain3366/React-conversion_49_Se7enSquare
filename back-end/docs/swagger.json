@@ -958,6 +958,15 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "name": "includeSuspended",
+            "required": false,
+            "in": "query",
+            "description": "Include events belonging to suspended communities",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -3906,13 +3915,17 @@
           },
           "channels": {
             "example": [
-              "general",
-              "fps-chat"
+              {
+                "id": "general",
+                "name": "general",
+                "type": "Text",
+                "topic": "General discussion"
+              }
             ],
-            "description": "Channels created in the community wizard",
+            "description": "Channels created in the community wizard or settings",
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object"
             }
           },
           "banner": {
@@ -4003,13 +4016,17 @@
           },
           "channels": {
             "example": [
-              "general",
-              "fps-chat"
+              {
+                "id": "general",
+                "name": "general",
+                "type": "Text",
+                "topic": "General discussion"
+              }
             ],
-            "description": "Channels created in the community wizard",
+            "description": "Channels created in the community wizard or settings",
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object"
             }
           },
           "banner": {

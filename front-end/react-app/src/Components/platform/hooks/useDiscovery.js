@@ -48,7 +48,11 @@ export default function useDiscovery() {
       try {
         const data = await apiRequest('/communities');
         if (cancelled) return;
-        setCommunities(Array.isArray(data) ? data : []);
+        // Filter out suspended communities — they must not appear on the discovery page
+        const activeCommunities = Array.isArray(data)
+          ? data.filter(c => (c.status || 'active').toLowerCase() !== 'suspended')
+          : [];
+        setCommunities(activeCommunities);
         setLoadWarning('');
       } catch (err) {
         if (!cancelled) {
@@ -100,7 +104,8 @@ export default function useDiscovery() {
         const matchCat = activeCategory === 'All' ||
           (c.category || '').toLowerCase() === cat ||
           (c.tags || []).some(t => String(t).toLowerCase() === cat);
-        return matchSearch && matchCat;
+        const notSuspended = (c.status || 'active').toLowerCase() !== 'suspended';
+        return matchSearch && matchCat && notSuspended;
       })
       .sort((a, b) => {
         if (sortBy === 'members') return memberCountOf(b) - memberCountOf(a);

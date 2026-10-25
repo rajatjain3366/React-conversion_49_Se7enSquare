@@ -7,13 +7,23 @@ export class DashboardService {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   getStats() {
+    const suspendedCommIds = new Set(
+      db.communities.filter((c) => c.status === 'suspended').map((c) => c.id),
+    );
+    const activeCommunities = db.communities.filter((c) => c.status !== 'suspended');
+    const activeEvents = db.events.filter((item) => !suspendedCommIds.has(item.communityId));
+
     return {
       totalUsers: db.users.filter((user) => user.status === 'active' || !user.status).length,
-      totalCommunities: db.communities.filter((c) => c.status !== 'suspended').length,
-      totalEvents: db.events.length,
+      totalCommunities: activeCommunities.length,
+      allCommunitiesCount: db.communities.length,
+      suspendedCommunitiesCount: db.communities.length - activeCommunities.length,
+      totalEvents: activeEvents.length,
+      allEventsCount: db.events.length,
+      suspendedEventsCount: db.events.length - activeEvents.length,
       pendingReportsCount: db.reports.filter((report) => report.status === 'pending').length,
       pendingAppealsCount: db.appeals.filter((appeal) => appeal.status === 'pending').length,
-      pendingEventsCount: db.events.filter((event) => event.status === 'pending').length,
+      pendingEventsCount: activeEvents.filter((event) => event.status === 'pending').length,
       totalMemberships: db.memberships.length,
       totalMessages: db.messages.length,
     };

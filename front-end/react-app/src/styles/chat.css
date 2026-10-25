@@ -998,7 +998,8 @@ mark.search-highlight {
     border-bottom: 1px solid var(--border)
 }
 
-.tb-btn {
+.input-toolbar .tb-btn,
+.input-row .tb-btn {
     width: 28px;
     height: 28px;
     border-radius: 6px;
@@ -1013,7 +1014,8 @@ mark.search-highlight {
     border: none
 }
 
-.tb-btn:hover {
+.input-toolbar .tb-btn:hover,
+.input-row .tb-btn:hover {
     background: rgba(255, 255, 255, 0.08);
     color: var(--text-primary)
 }
@@ -2075,7 +2077,8 @@ mark.search-highlight {
     padding: 8px 10px 0
 }
 
-.tb-btn {
+.input-toolbar .tb-btn,
+.input-row .tb-btn {
     width: 32px;
     height: 32px;
     border-radius: 6px;
@@ -2091,20 +2094,23 @@ mark.search-highlight {
     border: 1px solid transparent
 }
 
-.tb-btn:hover {
+.input-toolbar .tb-btn:hover,
+.input-row .tb-btn:hover {
     background: rgba(91, 110, 245, 0.12);
     color: var(--accent-light);
     border-color: rgba(91, 110, 245, 0.25);
     transform: translateY(-1px)
 }
 
-.tb-btn strong {
+.input-toolbar .tb-btn strong,
+.input-row .tb-btn strong {
     font-size: 14px;
     letter-spacing: -0.5px;
     font-weight: 700
 }
 
-.tb-btn em {
+.input-toolbar .tb-btn em,
+.input-row .tb-btn em {
     font-style: italic;
     font-size: 14px
 }
