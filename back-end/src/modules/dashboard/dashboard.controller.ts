@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiHeader, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AppRole } from '../rbac/role.enum';
 import { DashboardStatsDto } from './dashboard.dto';
@@ -14,6 +15,18 @@ import { DashboardService } from './dashboard.service';
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
+
+  @Get('landing-stats')
+  @Public()
+  @ApiOperation({ summary: 'Get public landing page stats' })
+  @ApiOkResponse({
+    schema: {
+      example: { totalUsers: 7, totalCommunities: 3, totalMessages: 4 },
+    },
+  })
+  getLandingStats() {
+    return this.dashboardService.getLandingStats();
+  }
 
   @Get('stats')
   @Roles(AppRole.ADMIN, AppRole.OWNER, AppRole.COMMUNITY_MANAGER, AppRole.MODERATOR, AppRole.USER, AppRole.ORGANIZER)

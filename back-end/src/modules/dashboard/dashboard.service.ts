@@ -6,16 +6,26 @@ import { PaymentsService } from '../payments/payments.service';
 export class DashboardService {
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  getLandingStats() {
+    const activeCommunities = db.communities.filter((community) => community.status !== 'suspended');
+
+    return {
+      totalUsers: db.users.filter((user) => user.status === 'active' || !user.status).length,
+      totalCommunities: activeCommunities.length,
+      totalMessages: db.messages.length,
+    };
+  }
+
   getStats() {
     const suspendedCommIds = new Set(
       db.communities.filter((c) => c.status === 'suspended').map((c) => c.id),
     );
     const activeCommunities = db.communities.filter((c) => c.status !== 'suspended');
     const activeEvents = db.events.filter((item) => !suspendedCommIds.has(item.communityId));
+    const landingStats = this.getLandingStats();
 
     return {
-      totalUsers: db.users.filter((user) => user.status === 'active' || !user.status).length,
-      totalCommunities: activeCommunities.length,
+      ...landingStats,
       allCommunitiesCount: db.communities.length,
       suspendedCommunitiesCount: db.communities.length - activeCommunities.length,
       totalEvents: activeEvents.length,
@@ -25,7 +35,6 @@ export class DashboardService {
       pendingAppealsCount: db.appeals.filter((appeal) => appeal.status === 'pending').length,
       pendingEventsCount: activeEvents.filter((event) => event.status === 'pending').length,
       totalMemberships: db.memberships.length,
-      totalMessages: db.messages.length,
     };
   }
 

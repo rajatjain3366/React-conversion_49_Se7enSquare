@@ -1698,6 +1698,42 @@
         ]
       }
     },
+    "/api/dashboard/landing-stats": {
+      "get": {
+        "operationId": "DashboardController_getLandingStats",
+        "summary": "Get public landing page stats",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role for RBAC: admin | moderator | user",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "totalUsers": 7,
+                    "totalCommunities": 3,
+                    "totalMessages": 4
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
     "/api/dashboard/stats": {
       "get": {
         "operationId": "DashboardController_getStats",

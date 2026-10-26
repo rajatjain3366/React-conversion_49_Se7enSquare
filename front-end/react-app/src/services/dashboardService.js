@@ -54,6 +54,10 @@ export const dashboardService = {
     return await apiRequest('/dashboard/stats');
   },
 
+  async getLandingStats() {
+    return await apiRequest('/dashboard/landing-stats');
+  },
+
   async getRevenue() {
     return await apiRequest('/dashboard/revenue');
   },

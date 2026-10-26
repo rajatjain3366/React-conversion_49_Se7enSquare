@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { authService } from '../../../services/authService';
 import { dashboardService } from '../../../services/dashboardService';
 
 export const HOW_IT_WORKS_STEPS = [
@@ -37,18 +36,13 @@ export default function useLanding() {
   });
 
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (!user || user.id === undefined || user.id === null) {
-      return;
-    }
-
     dashboardService
-      .getStats()
+      .getLandingStats()
       .then((data) => {
         if (data) {
-          const u = data.totalUsers || 0;
-          const c = data.totalCommunities || 0;
-          const m = data.totalMessages || 0;
+          const u = data.totalUsers ?? 0;
+          const c = data.totalCommunities ?? 0;
+          const m = data.totalMessages ?? 0;
           setStats({
             users: u >= 1000 ? `${(u / 1000).toFixed(1)}K+` : String(u),
             comms: c >= 1000 ? `${(c / 1000).toFixed(1)}K+` : String(c),
@@ -56,7 +50,9 @@ export default function useLanding() {
           });
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Failed to load landing page stats:', error);
+      });
   }, []);
 
   // ── 2. How It Works Step Switching & Auto-Cycling ──
