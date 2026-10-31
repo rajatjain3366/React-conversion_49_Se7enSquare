@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../Components/Navbar';
 import Footer from '../Components/Footer';
 import Button from '../Components/Button';
+import Icon from '../Components/Icon';
 import useLanding from '../Components/platform/hooks/useLanding';
 import '../styles/landing.css';
 
@@ -35,7 +36,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="landing-page-container">
+    <div className="landing-page-container ui-v2">
       {/* Reusable Navbar */}
       <Navbar />
 
@@ -136,17 +137,17 @@ export default function Landing() {
                       <div className="mk-sb-hex"></div>
                       Gameunity
                     </div>
-                    <div className="mk-ni on">🏠 Home</div>
-                    <div className="mk-ni">🔍 Discover</div>
-                    <div className="mk-ni">📅 Events</div>
+                    <div className="mk-ni on"><Icon name="home" size={13} /> Home</div>
+                    <div className="mk-ni"><Icon name="compass" size={13} /> Discover</div>
+                    <div className="mk-ni"><Icon name="calendar" size={13} /> Events</div>
                     <div className="mk-ni" style={{ marginTop: 'auto' }}>
-                      ⚙ Settings
+                      <Icon name="settings" size={13} /> Settings
                     </div>
                   </div>
 
                   {/* Mini main area */}
                   <div className="mk-main">
-                    <div className="mk-hdr">🔥 Trending Communities</div>
+                    <div className="mk-hdr"><Icon name="flame" size={13} /> Trending Communities</div>
 
                     <div className="mk-card">
                       <div className="mk-card-title">
@@ -155,7 +156,7 @@ export default function Landing() {
                           className="mk-badge"
                           style={{ background: 'rgba(91,110,245,0.15)', color: '#8B9CF8' }}
                         >
-                          🟢 Live
+                          <Icon name="dot" size={8} /> Live
                         </span>
                       </div>
                       Realtime discussions on web dev and open source
@@ -208,20 +209,20 @@ export default function Landing() {
           </span>
           <div className="logos-track-wrap">
             <div className="logos-track">
-              <div className="logo-chip">⚡ Dev Nexus</div>
-              <div className="logo-chip">🎨 Design Studio</div>
-              <div className="logo-chip">🌱 Open Source Hub</div>
-              <div className="logo-chip">🏆 Hackathon HQ</div>
-              <div className="logo-chip">🎮 GameCraft Guild</div>
-              <div className="logo-chip">🚀 NextGen Founders</div>
-              <div className="logo-chip">🤖 AI Innovators</div>
-              <div className="logo-chip">⚡ Dev Nexus</div>
-              <div className="logo-chip">🎨 Design Studio</div>
-              <div className="logo-chip">🌱 Open Source Hub</div>
-              <div className="logo-chip">🏆 Hackathon HQ</div>
-              <div className="logo-chip">🎮 GameCraft Guild</div>
-              <div className="logo-chip">🚀 NextGen Founders</div>
-              <div className="logo-chip">🤖 AI Innovators</div>
+              <div className="logo-chip">Dev Nexus</div>
+              <div className="logo-chip">Design Studio</div>
+              <div className="logo-chip">Open Source Hub</div>
+              <div className="logo-chip">Hackathon HQ</div>
+              <div className="logo-chip">GameCraft Guild</div>
+              <div className="logo-chip">NextGen Founders</div>
+              <div className="logo-chip">AI Innovators</div>
+              <div className="logo-chip">Dev Nexus</div>
+              <div className="logo-chip">Design Studio</div>
+              <div className="logo-chip">Open Source Hub</div>
+              <div className="logo-chip">Hackathon HQ</div>
+              <div className="logo-chip">GameCraft Guild</div>
+              <div className="logo-chip">NextGen Founders</div>
+              <div className="logo-chip">AI Innovators</div>
             </div>
           </div>
         </div>
@@ -508,7 +509,7 @@ export default function Landing() {
                 <div className="hw-comm-list">
                   <div className="hw-ci">
                     <div className="hw-ci-ico" style={{ background: 'rgba(91,110,245,0.12)' }}>
-                      ⚡
+                      <Icon name="code" size={18} />
                     </div>
                     <div className="hw-ci-info">
                       <div className="hw-ci-name">Dev Nexus</div>
@@ -518,13 +519,13 @@ export default function Landing() {
                       className={`hw-ci-btn ${joinedCommunities.devNexus ? 'joined' : ''}`}
                       onClick={() => toggleJoin('devNexus')}
                     >
-                      {joinedCommunities.devNexus ? '✓ Joined' : 'Join'}
+                      {joinedCommunities.devNexus ? <><Icon name="check" size={12} /> Joined</> : 'Join'}
                     </button>
                   </div>
 
                   <div className="hw-ci">
                     <div className="hw-ci-ico" style={{ background: 'rgba(139,92,246,0.12)' }}>
-                      🎨
+                      <Icon name="palette" size={18} />
                     </div>
                     <div className="hw-ci-info">
                       <div className="hw-ci-name">Design Studio</div>
@@ -534,13 +535,13 @@ export default function Landing() {
                       className={`hw-ci-btn ${joinedCommunities.designStudio ? 'joined' : ''}`}
                       onClick={() => toggleJoin('designStudio')}
                     >
-                      {joinedCommunities.designStudio ? '✓ Joined' : 'Join'}
+                      {joinedCommunities.designStudio ? <><Icon name="check" size={12} /> Joined</> : 'Join'}
                     </button>
                   </div>
 
                   <div className="hw-ci">
                     <div className="hw-ci-ico" style={{ background: 'rgba(52,211,153,0.1)' }}>
-                      🌱
+                      <Icon name="git-branch" size={18} />
                     </div>
                     <div className="hw-ci-info">
                       <div className="hw-ci-name">Open Source Hub</div>
@@ -550,13 +551,13 @@ export default function Landing() {
                       className={`hw-ci-btn ${joinedCommunities.openSourceHub ? 'joined' : ''}`}
                       onClick={() => toggleJoin('openSourceHub')}
                     >
-                      {joinedCommunities.openSourceHub ? '✓ Joined' : 'Join'}
+                      {joinedCommunities.openSourceHub ? <><Icon name="check" size={12} /> Joined</> : 'Join'}
                     </button>
                   </div>
 
                   <div className="hw-ci">
                     <div className="hw-ci-ico" style={{ background: 'rgba(245,158,11,0.1)' }}>
-                      🏆
+                      <Icon name="trophy" size={18} />
                     </div>
                     <div className="hw-ci-info">
                       <div className="hw-ci-name">Hackathon HQ</div>
@@ -566,7 +567,7 @@ export default function Landing() {
                       className={`hw-ci-btn ${joinedCommunities.hackathonHQ ? 'joined' : ''}`}
                       onClick={() => toggleJoin('hackathonHQ')}
                     >
-                      {joinedCommunities.hackathonHQ ? '✓ Joined' : 'Join'}
+                      {joinedCommunities.hackathonHQ ? <><Icon name="check" size={12} /> Joined</> : 'Join'}
                     </button>
                   </div>
                 </div>
@@ -594,7 +595,7 @@ export default function Landing() {
 
           <div className="testi-grid">
             <div className="tcard reveal reveal-d1">
-              <div className="tcard-stars">⭐⭐⭐⭐⭐</div>
+              <div className="tcard-stars" aria-label="5 out of 5 stars">{[0, 1, 2, 3, 4].map((i) => <Icon key={i} name="star" size={14} />)}</div>
               <div className="tcard-text">
                 "Gameunity replaced four separate tools for us. The <em>real-time channels and events</em> work perfectly
                 together — our community engagement went up 3×."
@@ -611,7 +612,7 @@ export default function Landing() {
             </div>
 
             <div className="tcard reveal reveal-d2">
-              <div className="tcard-stars">⭐⭐⭐⭐⭐</div>
+              <div className="tcard-stars" aria-label="5 out of 5 stars">{[0, 1, 2, 3, 4].map((i) => <Icon key={i} name="star" size={14} />)}</div>
               <div className="tcard-text">
                 "The moderation tools are genuinely <em>the best I've used anywhere</em>. AutoMod catches 97% of issues
                 before they escalate. Our mods can finally breathe."
@@ -628,7 +629,7 @@ export default function Landing() {
             </div>
 
             <div className="tcard reveal reveal-d3">
-              <div className="tcard-stars">⭐⭐⭐⭐⭐</div>
+              <div className="tcard-stars" aria-label="5 out of 5 stars">{[0, 1, 2, 3, 4].map((i) => <Icon key={i} name="star" size={14} />)}</div>
               <div className="tcard-text">
                 "We ran our first hackathon on Gameunity with <em>400 participants</em> and zero issues. The event
                 infrastructure is rock solid."

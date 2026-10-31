@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './styles/global.css';
 import App from './App.jsx';
+// Scoped UI refresh (.ui-v2) — imported after App so it loads after all page CSS
+import './styles/ui-refresh.css';
 import { API_BASE, clearUserSession, handleRoleMismatch } from './services/api';
 
 /**

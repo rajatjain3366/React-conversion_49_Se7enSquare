@@ -1,0 +1,554 @@
+/*
+ * UI refresh — scoped design system.
+ *
+ * Every rule in this file is prefixed with `.ui-v2`, so it only affects pages
+ * whose wrapper element carries that class. Pages without it are untouched.
+ * Imported last (main.jsx) so it wins over equal-specificity page rules.
+ * To roll a page back: remove `ui-v2` from its wrapper className.
+ */
+
+/* ── Tokens ─────────────────────────────────────────────── */
+.ui-v2 {
+  /* Palette */
+  --ui-bg: #1d1d1d;
+  --ui-surface: #273b40;
+  --ui-surface-2: #3c4748;
+  --ui-border: #3c4748;
+  --ui-border-strong: #56676a;
+  --ui-text: #cae9ea;
+  --ui-text-2: #8fa5a7;
+  --ui-text-3: #8fa5a7;
+  --ui-accent: #208c8c;
+  --ui-accent-hover: #2aa5a5;
+  --ui-link: #2aa5a5;
+  --ui-accent-tint: rgba(32, 140, 140, 0.12);
+  --ui-accent-border: rgba(32, 140, 140, 0.4);
+  --ui-success-tint: rgba(34, 197, 94, 0.12);
+  --ui-success-border: rgba(34, 197, 94, 0.35);
+  --ui-on-accent: #111111;
+  --ui-success: #22c55e;
+  --ui-warning: #eab308;
+  --ui-danger: #ef4444;
+
+  /* Type */
+  --ui-font: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Spacing (4px scale) */
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 24px;
+  --ui-space-6: 32px;
+  --ui-space-7: 48px;
+
+  /* Radius */
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 10px;
+  --ui-radius-lg: 14px;
+
+  /* Map the existing variable names used across the app's stylesheets onto
+     the new palette, so scoped pages recolour without touching those files. */
+
+  /* global.css / chat.css / profile-settings.css names */
+  --bg-main: var(--ui-bg);
+  --bg-deep: var(--ui-bg);
+  --bg-sidebar: var(--ui-bg);
+  --bg-card: var(--ui-surface);
+  --bg-input: var(--ui-surface);
+  --bg-card-hover: var(--ui-surface-2);
+  --bg-hover: var(--ui-surface-2);
+  --border: var(--ui-border);
+  --border-2: var(--ui-border);
+  --border-strong: var(--ui-border-strong);
+  --text-primary: var(--ui-text);
+  --text-secondary: var(--ui-text-2);
+  --text-muted: var(--ui-text-3);
+  --text-1: var(--ui-text);
+  --text-2: var(--ui-text-2);
+  --text-3: var(--ui-text-3);
+  --accent: var(--ui-accent);
+  --accent-hover: var(--ui-accent-hover);
+  --accent-2: var(--ui-accent-hover);
+  --accent-light: var(--ui-link);
+  --success: var(--ui-success);
+  --warning: var(--ui-warning);
+  --warn: var(--ui-warning);
+  --danger: var(--ui-danger);
+  --error: var(--ui-danger);
+
+  /* landing.css / login.css names */
+  --bg: var(--ui-bg);
+  --bg1: var(--ui-surface);
+  --bg2: var(--ui-surface-2);
+  --bg3: var(--ui-surface-2);
+  --bdr: var(--ui-border);
+  --bdr2: var(--ui-border);
+  --bdr-hover: var(--ui-border-strong);
+  --ac: var(--ui-accent);
+  --ac2: var(--ui-accent);
+  --ac3: var(--ui-link);
+  --ac-hover: var(--ui-accent-hover);
+  --ac-active: var(--ui-accent);
+  --ac-glow: transparent;
+  --ac-tint: var(--ui-accent-tint);
+  --err: var(--ui-danger);
+  --t1: var(--ui-text);
+  --t2: var(--ui-text-2);
+  --t3: var(--ui-text-3);
+  --t4: var(--ui-text-3);
+}
+
+/* ── Icons (Components/Icon.jsx) ────────────────────────── */
+.ui-v2 .icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.125em;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LANDING  (Pages/Landing.jsx — wrapper .landing-page-container)
+   Scoped with both classes so same-named classes on other
+   pages (e.g. Discovery's .hero) are not affected.
+═══════════════════════════════════════════════════════════ */
+.ui-v2.landing-page-container {
+  background-color: var(--ui-bg);
+  color: var(--ui-text-2);
+  font-family: var(--ui-font);
+}
+
+/* Type: one family (DM Sans) instead of Syne; mono for numbers */
+.ui-v2.landing-page-container :is(
+  .nav-logo, .hero-h1, .mk-bar-title, .mk-sb-logo, .mk-hdr, .mk-card-title,
+  .logo-chip, .section-eyebrow, .section-h2, .feat-title, .step-title,
+  .tc-av, .cta-h2, .ft-brand .logo-name, .ft-col h4
+) {
+  font-family: var(--ui-font);
+}
+
+.ui-v2.landing-page-container .nav-logo {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.ui-v2.landing-page-container .hero-h1 {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.ui-v2.landing-page-container :is(.section-h2, .cta-h2) {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.ui-v2.landing-page-container :is(.feat-title, .step-title, .mk-card-title, .mk-hdr, .mk-sb-logo) {
+  font-weight: 600;
+}
+
+.ui-v2.landing-page-container :is(.hstat-val, .step-n) {
+  font-family: var(--ui-font-mono);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.ui-v2.landing-page-container .section-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ui-link);
+}
+
+.ui-v2.landing-page-container .ft-col h4 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ui-text-2);
+}
+
+/* Inline Syne font on the "Discover Communities" card title */
+.ui-v2.landing-page-container .hw-card > div:first-child {
+  font-family: var(--ui-font) !important;
+  font-weight: 600 !important;
+}
+
+/* ── Navbar ── */
+.ui-v2.landing-page-container nav#nav {
+  background: rgba(29, 29, 29, 0.9);
+  border-bottom-color: var(--ui-border);
+}
+
+.ui-v2.landing-page-container nav#nav.scrolled {
+  background: rgba(39, 59, 64, 0.95);
+  border-color: var(--ui-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.ui-v2.landing-page-container .nav-hex,
+.ui-v2.landing-page-container .mk-sb-hex {
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  box-shadow: none;
+}
+
+.ui-v2.landing-page-container .nav-logo:hover .nav-hex {
+  transform: none;
+}
+
+.ui-v2.landing-page-container .nav-link:hover {
+  background: var(--ui-surface-2);
+}
+
+/* ── Buttons: solid fill, no glow, no lift ── */
+.ui-v2.landing-page-container :is(.btn-cta, .btn-hero) {
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-sm);
+  font-family: var(--ui-font);
+  font-weight: 600;
+  box-shadow: none;
+  transition: background-color 0.15s ease;
+}
+
+.ui-v2.landing-page-container :is(.btn-cta, .btn-hero):hover {
+  background: var(--ui-accent-hover);
+  transform: none;
+  box-shadow: none;
+}
+
+.ui-v2.landing-page-container :is(.btn-cta, .btn-hero):active {
+  background: var(--ui-accent);
+}
+
+.ui-v2.landing-page-container .btn-hero {
+  height: 44px;
+  padding: 0 22px;
+}
+
+.ui-v2.landing-page-container :is(.btn-ghost, .btn-hero-secondary) {
+  background: transparent;
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-sm);
+  font-family: var(--ui-font);
+  font-weight: 500;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ui-v2.landing-page-container :is(.btn-ghost, .btn-hero-secondary):hover {
+  background: var(--ui-surface-2);
+  border-color: var(--ui-text-3);
+  color: var(--ui-text);
+  transform: none;
+}
+
+.ui-v2.landing-page-container .btn-hero-secondary {
+  height: 44px;
+  padding: 0 20px;
+}
+
+/* ── Hero: no glow blobs, grid pattern, pill eyebrow or floating badges ── */
+.ui-v2.landing-page-container .hero {
+  background: var(--ui-bg);
+}
+
+.ui-v2.landing-page-container .hero::before,
+.ui-v2.landing-page-container .hero-grid,
+.ui-v2.landing-page-container .float-badge {
+  display: none;
+}
+
+.ui-v2.landing-page-container .hero-eyebrow {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ui-text-3);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.ui-v2.landing-page-container .ey-dot {
+  background: var(--ui-success);
+  box-shadow: none;
+  animation: none;
+}
+
+.ui-v2.landing-page-container .grad-txt {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  color: var(--ui-link);
+}
+
+.ui-v2.landing-page-container .hero-stat-row {
+  border-top-color: var(--ui-border);
+}
+
+/* Mockup — 3D tilt (inline style from useLanding) is kept */
+.ui-v2.landing-page-container .mockup {
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.ui-v2.landing-page-container .mk-hdr .icon {
+  color: var(--ui-link);
+}
+
+.ui-v2.landing-page-container .mk-card:hover {
+  border-color: var(--ui-border-strong);
+}
+
+/* Inline indigo "Live" badge on the first mockup card */
+.ui-v2.landing-page-container .mk-hdr + .mk-card .mk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ui-success-tint) !important;
+  color: var(--ui-success) !important;
+}
+
+.ui-v2.landing-page-container .mk-prog-fill {
+  background: var(--ui-accent);
+}
+
+/* ── Logo strip ── */
+.ui-v2.landing-page-container .logos {
+  background: transparent;
+  border-color: var(--ui-border);
+}
+
+.ui-v2.landing-page-container .logo-chip {
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  border-color: var(--ui-border);
+  font-weight: 500;
+  color: var(--ui-text-3);
+}
+
+.ui-v2.landing-page-container .logo-chip:hover {
+  border-color: var(--ui-border-strong);
+  background: transparent;
+  color: var(--ui-text-2);
+}
+
+/* ── Features ── */
+.ui-v2.landing-page-container .features {
+  background: var(--ui-bg);
+}
+
+.ui-v2.landing-page-container .feat-grid {
+  gap: var(--ui-space-4);
+}
+
+.ui-v2.landing-page-container .feat-card {
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  padding: var(--ui-space-5);
+  transition: border-color 0.15s ease;
+}
+
+.ui-v2.landing-page-container .feat-card:hover {
+  border-color: var(--ui-border-strong);
+  transform: none;
+  box-shadow: none;
+}
+
+.ui-v2.landing-page-container .feat-ico-wrap,
+.ui-v2.landing-page-container .feat-card:hover .feat-ico-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-2);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-link);
+  box-shadow: none;
+  margin-bottom: var(--ui-space-4);
+}
+
+.ui-v2.landing-page-container .feat-ico-wrap svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── How it works ── */
+.ui-v2.landing-page-container .how {
+  background: var(--ui-bg);
+}
+
+/* create-community.css and report.css also define .step / .step::after
+   and load after landing.css; restore the landing layout here. */
+.ui-v2.landing-page-container .steps .step {
+  align-items: flex-start;
+  flex: none;
+  gap: 20px;
+  padding: 20px 18px;
+  border-radius: var(--ui-radius-md);
+}
+
+.ui-v2.landing-page-container .steps .step::after {
+  display: none;
+}
+
+.ui-v2.landing-page-container .steps .step:hover {
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+
+.ui-v2.landing-page-container .steps .step.on {
+  background: var(--ui-accent-tint);
+  border-color: var(--ui-accent-border);
+}
+
+.ui-v2.landing-page-container .step-n {
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-2);
+  border-color: var(--ui-border);
+}
+
+.ui-v2.landing-page-container .step.on .step-n {
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  box-shadow: none;
+}
+
+.ui-v2.landing-page-container .hw-card {
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: none;
+}
+
+/* Inline indigo tint on the first category chip */
+.ui-v2.landing-page-container .hw-card > div:nth-child(2) > span:first-child {
+  background: var(--ui-accent-tint) !important;
+  border-color: var(--ui-accent-border) !important;
+  color: var(--ui-link) !important;
+}
+
+.ui-v2.landing-page-container .hw-bar-fill {
+  background: var(--ui-accent);
+}
+
+.ui-v2.landing-page-container .hw-ci:hover {
+  background: var(--ui-surface);
+  border-color: var(--ui-border-strong);
+}
+
+/* Inline tinted backgrounds on the community icon tiles */
+.ui-v2.landing-page-container .hw-ci-ico {
+  background: var(--ui-surface-2) !important;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  color: var(--ui-text-2);
+}
+
+.ui-v2.landing-page-container .hw-ci-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  border-color: var(--ui-border-strong);
+  color: var(--ui-text);
+  font-weight: 600;
+}
+
+.ui-v2.landing-page-container .hw-ci-btn:hover {
+  background: var(--ui-accent-tint);
+  border-color: var(--ui-accent-border);
+  color: var(--ui-link);
+}
+
+.ui-v2.landing-page-container .hw-ci-btn.joined {
+  background: var(--ui-success-tint);
+  border-color: var(--ui-success-border);
+  color: var(--ui-success);
+}
+
+/* ── Testimonials ── */
+.ui-v2.landing-page-container .testi-grid {
+  gap: var(--ui-space-4);
+}
+
+.ui-v2.landing-page-container .tcard {
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  padding: var(--ui-space-5);
+  transition: border-color 0.15s ease;
+}
+
+.ui-v2.landing-page-container .tcard:hover {
+  border-color: var(--ui-border-strong);
+  transform: none;
+  box-shadow: none;
+}
+
+.ui-v2.landing-page-container .tcard-stars {
+  display: flex;
+  gap: 2px;
+  letter-spacing: 0;
+  color: var(--ui-link);
+}
+
+.ui-v2.landing-page-container .tcard-stars .icon {
+  fill: currentColor;
+}
+
+/* Inline tinted backgrounds on testimonial avatars */
+.ui-v2.landing-page-container .tc-av {
+  background: var(--ui-surface-2) !important;
+  color: var(--ui-text-2) !important;
+  border-color: var(--ui-border);
+  border-radius: 50%;
+  font-weight: 600;
+}
+
+/* ── CTA ── */
+.ui-v2.landing-page-container .cta-section {
+  background: var(--ui-bg);
+}
+
+.ui-v2.landing-page-container .cta-box {
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: none;
+}
+
+.ui-v2.landing-page-container .cta-box::after {
+  display: none;
+}
+
+/* ── Footer ── */
+.ui-v2.landing-page-container footer {
+  background: var(--ui-bg);
+  border-top-color: var(--ui-border);
+}
+
+.ui-v2.landing-page-container .footer-bot {
+  border-top-color: var(--ui-border);
+}
+
+.ui-v2.landing-page-container .ft-status-pill {
+  background: var(--ui-success-tint);
+  border-color: var(--ui-success-border);
+  color: var(--ui-success);
+}
+
+.ui-v2.landing-page-container .soc {
+  background: transparent;
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+}
+
+.ui-v2.landing-page-container .soc:hover {
+  background: var(--ui-surface-2);
+  border-color: var(--ui-border-strong);
+  color: var(--ui-text);
+  transform: none;
+}
