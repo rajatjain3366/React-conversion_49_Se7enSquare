@@ -7,10 +7,20 @@ import { memberCountOf, onlineCountOf } from '../../../Components/platform/hooks
  * (Join/Leave, Settings, Delete for owners).
  */
 export default function CommunityBanner({ community, joined, isOwner, foundedLabel, onToggleJoin, onDelete }) {
+  // Show the community's own banner when it has one: a CSS gradient (from the
+  // Create wizard) is used as-is, an uploaded image URL is wrapped in url().
+  // No banner -> no inline style, so the default .comm-banner background stays.
+  const bannerStyle = community.banner
+    ? {
+        backgroundImage: community.banner.includes('gradient(') ? community.banner : `url(${community.banner})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : undefined;
 
   return (
     <div className="comm-banner-area">
-      <div className="comm-banner">
+      <div className="comm-banner" style={bannerStyle}>
         <div className="banner-pattern"></div>
         <div className="banner-emoji" id="comm-icon">{community.icon || '🏘️'}</div>
       </div>

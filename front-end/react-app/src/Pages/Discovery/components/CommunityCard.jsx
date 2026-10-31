@@ -17,12 +17,22 @@ export default function CommunityCard({ comm, isJoined, onToggleJoin }) {
   const grad = comm.grad || 'grad-purple';
   const bannerClass = grad.replace('grad-', 'banner-');
 
+  // Use the community's own banner when it has one (gradient as-is, image URL
+  // in url()). No banner -> no inline style, so the default class colour stays.
+  const bannerStyle = comm.banner
+    ? {
+        backgroundImage: comm.banner.includes('gradient(') ? comm.banner : `url(${comm.banner})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : undefined;
+
   return (
     <div
       className="c-card"
       onClick={() => navigate(`/community/${comm.id}`)}
     >
-      <div className={`c-banner ${bannerClass}`}>
+      <div className={`c-banner ${bannerClass}`} style={bannerStyle}>
         <div className="c-banner-inner">{icon}{icon}{icon}</div>
       </div>
 
