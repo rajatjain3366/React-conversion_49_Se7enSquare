@@ -40,12 +40,28 @@ export default function useModPanel() {
       try {
         const data = await moderationService.getReports();
         if (Array.isArray(data)) {
+          // Reports only store targetId. For user reports, look up each
+          // reported user's username once (GET /users/:id) so the queue shows
+          // "player01" instead of "4". A failed lookup just falls back to the ID.
+          const userIds = [...new Set(data.filter((r) => r.targetType === 'user').map((r) => r.targetId))];
+          const usernames = {};
+          await Promise.all(userIds.map(async (uid) => {
+            try {
+              const u = await moderationService.getUser(uid);
+              if (u?.username) usernames[uid] = u.username;
+            } catch { /* keep the ID */ }
+          }));
+
           const mapped = data.map((r) => ({
             id: r.id,
             ref: r.ref || `RPT-${r.id}`,
             type: r.targetType || 'message',
             targetId: r.targetId, // needed to sanction the reported user
-            reportedUser: r.reportedUser?.username || r.targetId || 'Unknown',
+            // Always a string: the queue search calls .toLowerCase() on it.
+            // (usernames only for user reports: a post's targetId is a post ID)
+            reportedUser: String(
+              (r.targetType === 'user' && usernames[r.targetId]) || r.reportedUser?.username || r.targetId || 'Unknown'
+            ),
             channel: r.channel || '#general',
             reason: r.reason || 'Violation',
             status: r.status || 'pending',

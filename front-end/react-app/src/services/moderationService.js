@@ -24,6 +24,12 @@ export const moderationService = {
     });
   },
 
+  // GET /users/:id: the public identity (id, username, role) is always
+  // returned, even for private profiles. Used to show reported usernames.
+  async getUser(userId) {
+    return await apiRequest(`/users/${userId}`);
+  },
+
   // POST /sanctions (moderator or admin). Stores the sanction and notifies
   // the user. It does NOT change the account status (only admin ban/suspend does).
   async createSanction(payload) {
