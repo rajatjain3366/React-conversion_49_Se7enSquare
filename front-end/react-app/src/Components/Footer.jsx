@@ -42,8 +42,9 @@ export default function Footer() {
           <div className="ft-col">
             <h4>Communities</h4>
             <div className="ft-links">
-              <Link to="/community/1" className="ft-link">Dev Nexus</Link>
-              <Link to="/community/2" className="ft-link">Design Studio</Link>
+              {/* Labels match the seed communities: id 1 = FPS Arena, id 2 = Indie Dev Hub */}
+              <Link to="/community/1" className="ft-link">FPS Arena</Link>
+              <Link to="/community/2" className="ft-link">Indie Dev Hub</Link>
               <Link to="/create-community" className="ft-link">Start a Community</Link>
               {/* Chat needs a community (?community=id), so send users to
                   Discover to pick one. A bare /chat shows an empty chat. */}
