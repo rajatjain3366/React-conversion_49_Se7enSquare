@@ -62,7 +62,15 @@ export default function EventApproval() {
     try {
       await eventService.updateEvent(id, { status: EVENT_STATUSES.APPROVED });
       showToast('✅ Event approved — all users will now see it.');
-    } catch {
+    } catch (err) {
+      // err.status is set only when the backend answered (see eventService),
+      // e.g. "An approved event already exists ... at the selected date and
+      // time". Show that reason and leave the event unchanged.
+      if (err.status) {
+        showToast(`⚠️ ${err.message}`);
+        return;
+      }
+      // Backend unreachable: keep the existing local fallback.
       updateStoredItem(id, { status: EVENT_STATUSES.APPROVED });
       showToast('✅ Event approved (locally).');
     }
@@ -75,7 +83,13 @@ export default function EventApproval() {
     try {
       await eventService.updateEvent(id, { status: EVENT_STATUSES.REJECTED });
       showToast('❌ Event rejected.');
-    } catch {
+    } catch (err) {
+      // Same as approve: real server error -> show it, change nothing.
+      if (err.status) {
+        showToast(`⚠️ ${err.message}`);
+        return;
+      }
+      // Backend unreachable: keep the existing local fallback.
       updateStoredItem(id, { status: EVENT_STATUSES.REJECTED });
       showToast('❌ Event rejected (locally).');
     }
