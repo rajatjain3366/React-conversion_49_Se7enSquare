@@ -11,7 +11,8 @@ export default function ReportHeader({ userInitials, target }) {
     if (target?.type === 'message') {
       return (
         <div className="breadcrumb">
-          <span style={{ cursor: 'pointer' }} onClick={() => navigate('/chat')}>Chat</span>
+          {/* /chat without ?community= is empty, so go to Discover to pick a community */}
+          <span style={{ cursor: 'pointer' }} onClick={() => navigate('/discovery')}>Chat</span>
           <span className="sep">&gt;</span>
           <span>{target.author ? `@${target.author}` : 'Message'}</span>
           <span className="sep">&gt;</span>

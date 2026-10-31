@@ -45,7 +45,9 @@ export default function Footer() {
               <Link to="/community/1" className="ft-link">Dev Nexus</Link>
               <Link to="/community/2" className="ft-link">Design Studio</Link>
               <Link to="/create-community" className="ft-link">Start a Community</Link>
-              <Link to="/chat" className="ft-link">Real-time Chat</Link>
+              {/* Chat needs a community (?community=id), so send users to
+                  Discover to pick one. A bare /chat shows an empty chat. */}
+              <Link to="/discovery" className="ft-link">Real-time Chat</Link>
             </div>
           </div>
 
