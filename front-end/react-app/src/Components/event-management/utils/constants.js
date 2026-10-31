@@ -1,5 +1,9 @@
 // Central constants, storage keys, categories, and user helpers for Event Management.
-export const API_BASE = 'http://localhost:3000/api';
+// Use the same API base as the rest of the app (services/api.js):
+// VITE_API_URL if set, otherwise "/api", which the Vite dev server proxies to
+// the backend on port 3000. It was hardcoded to http://localhost:3000/api,
+// which ignored the proxy/env and broke on any other host or port.
+export { API_BASE } from '../../../services/api';
 
 export const STORAGE_KEYS = {
   EVENTS: 'events',

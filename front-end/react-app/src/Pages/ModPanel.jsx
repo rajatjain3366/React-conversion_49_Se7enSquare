@@ -48,6 +48,7 @@ export default function ModPanel() {
             processing={m.processing}
             onTakeAction={m.takeAction}
             onMoveToReview={m.moveToReview}
+            onEscalate={m.escalateReport}
             queueCounts={m.queueCounts}
             recentActions={m.recentActions}
           />

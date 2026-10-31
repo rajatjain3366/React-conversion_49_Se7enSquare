@@ -188,6 +188,9 @@ export function AppealForm({
         ⚠️ <strong>Important:</strong> Submitting a false appeal is a violation of Gameunity's Terms of Service and may result in additional moderation actions.
       </div>
 
+      {/* Real error from submitting (not logged in, or backend rejected it) */}
+      {errors.submit && <div className="error-msg" style={{ marginBottom: '12px' }}>{errors.submit}</div>}
+
       <div className="form-actions">
         <button type="button" className="btn-back" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn-next" disabled={submitting}>

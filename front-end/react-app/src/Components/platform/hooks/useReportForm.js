@@ -73,18 +73,22 @@ export default function useReportForm() {
       targetId: Number(selectedTarget?.id || 1),
       reason: reasonText.length >= 8 ? reasonText : `${reasonText} - reported by user`,
     };
+    // Only show the success step (with the real report ID) when the backend
+    // actually saved the report. Before, a failed request still showed a
+    // made-up "RPT-<timestamp>" reference, so users thought it was sent.
     try {
       const data = await apiRequest('/reports', {
         method: 'POST',
         body: JSON.stringify(reportData),
       });
-      setRefId(`RPT-${data?.id || Date.now()}`);
-    } catch {
-      setRefId(`RPT-${Date.now()}`);
+      setRefId(`RPT-${data.id}`);
+      setStep(4);
+      setSubmitted(true);
+    } catch (err) {
+      showToast(`❌ Report not sent: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
-    setStep(4);
-    setSubmitted(true);
   };
 
   const resetForm = () => {

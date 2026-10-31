@@ -16,10 +16,20 @@ export const moderationService = {
     });
   },
 
-  async updateReportStatus(reportId, status) {
+  // resolutionNote is optional; JSON.stringify drops it when undefined.
+  async updateReportStatus(reportId, status, resolutionNote) {
     return await apiRequest(`/reports/${reportId}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, resolutionNote }),
+    });
+  },
+
+  // POST /sanctions (moderator or admin). Stores the sanction and notifies
+  // the user. It does NOT change the account status (only admin ban/suspend does).
+  async createSanction(payload) {
+    return await apiRequest('/sanctions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 

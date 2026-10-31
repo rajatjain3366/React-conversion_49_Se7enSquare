@@ -62,6 +62,13 @@ export default function useAuthForm() {
         setLoginErrors((prev) => ({ ...prev, general: msg, isSanctioned: true }));
         showToast('⚠️', msg);
       }
+      // Set by handleRoleMismatch() in services/api.js after an admin changed
+      // this user's role: explain why they were logged out.
+      if (params.get('roleChanged')) {
+        const msg = 'Your role was changed by an admin. Please log in again.';
+        setLoginErrors((prev) => ({ ...prev, general: msg }));
+        showToast('ℹ️', msg);
+      }
     }
   }, []);
 

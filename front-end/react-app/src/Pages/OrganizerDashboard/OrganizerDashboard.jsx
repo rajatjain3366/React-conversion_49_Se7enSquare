@@ -45,7 +45,12 @@ export default function OrganizerDashboard() {
     filteredEvents,
     isPremium,
     toastMsg,
+    currentUser,
   } = useOrganizerData();
+
+  // Backend: DELETE /events/:id is admin-only (organizers get 403).
+  // So only an admin viewing this dashboard gets a Delete button.
+  const canDeleteEvents = currentUser?.role === 'admin';
 
   return (
     <div className="app-shell">
@@ -112,7 +117,7 @@ export default function OrganizerDashboard() {
             onViewRegistrants={(id) =>
               navigate(`/event-registrants?eventId=${id}`)
             }
-            onDelete={handleDeleteEvent}
+            onDelete={canDeleteEvents ? handleDeleteEvent : undefined}
             onHostTournament={openCreateModal}
           />
         </div>

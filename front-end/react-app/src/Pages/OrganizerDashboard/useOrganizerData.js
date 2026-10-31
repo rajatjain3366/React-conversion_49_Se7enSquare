@@ -269,8 +269,10 @@ export function useOrganizerData() {
       prizePool: Number(formData.prizePool) || 0,
       type: 'tournament',
       createdBy: currentUser?.username || currentUser?.name || 'organizer',
+      // Backend DTO only accepts "organiserId" (UK spelling). Sending the US
+      // spelling "organizerId" too made the ValidationPipe reject every
+      // create/edit with 400 (forbidNonWhitelisted).
       organiserId: currentUser?.id,
-      organizerId: currentUser?.id,
     };
 
     try {

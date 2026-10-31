@@ -44,6 +44,7 @@ export default function useModPanel() {
             id: r.id,
             ref: r.ref || `RPT-${r.id}`,
             type: r.targetType || 'message',
+            targetId: r.targetId, // needed to sanction the reported user
             reportedUser: r.reportedUser?.username || r.targetId || 'Unknown',
             channel: r.channel || '#general',
             reason: r.reason || 'Violation',
@@ -84,35 +85,84 @@ export default function useModPanel() {
         r.reason?.toLowerCase().includes(queueSearch.toLowerCase()))
   );
 
-  const takeAction = async (label, reportId) => {
-    setProcessing(true);
-    try {
-      await moderationService.updateReportStatus(reportId, 'resolved');
-    } catch {
-      // Proceed with local update even if network error
+  // Update one report's status (and optional action text) in the list and in
+  // the detail view, so the screen matches what the backend now has.
+  const setReportStatus = (reportId, status, action) => {
+    const patch = action ? { status, action } : { status };
+    setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, ...patch } : r)));
+    setSelectedReport((prev) => (prev && prev.id === reportId ? { ...prev, ...patch } : prev));
+  };
+
+  // Backend rule: pending -> reviewed -> resolved (no skipping).
+  // Steps: 1) pending -> reviewed, 2) create the sanction, 3) reviewed -> resolved.
+  // `reached` remembers how far we got, so if a later step fails the screen
+  // still shows the real status and the error is shown (no fake success).
+  const takeAction = async (modAction, report) => {
+    const note = actionNote.trim();
+    const actionText = `${modAction.label}${note ? ` — ${note}` : ''}`;
+
+    // Reports keep only targetType/targetId, so we can only sanction when the
+    // target is a user. Post/community reports can still be dismissed or escalated.
+    if (modAction.sanction && report.type !== 'user') {
+      showToast('⚠️ Sanctions need a user report. Dismiss or escalate this one.');
+      return;
     }
 
-    setReports((prev) =>
-      prev.map((r) =>
-        r.id === reportId
-          ? { ...r, status: 'resolved', action: `${label}${actionNote ? ` — ${actionNote}` : ''}` }
-          : r
-      )
-    );
-    setSelectedReport((prev) => (prev ? { ...prev, status: 'resolved', action: label } : prev));
-    setActionNote('');
-    showToast(`✅ Action taken: ${label}`);
-    setProcessing(false);
+    setProcessing(true);
+    let reached = report.status;
+    try {
+      if (reached === 'pending') {
+        await moderationService.updateReportStatus(report.id, 'reviewed');
+        reached = 'reviewed';
+      }
+      if (modAction.sanction) {
+        await moderationService.createSanction({
+          targetUserId: Number(report.targetId),
+          type: modAction.sanction,
+          reason: actionText,
+          reportId: report.id,
+          ...(modAction.hours
+            ? { expiresAt: new Date(Date.now() + modAction.hours * 3600 * 1000).toISOString() }
+            : {}),
+        });
+      }
+      await moderationService.updateReportStatus(report.id, 'resolved', actionText);
+      reached = 'resolved';
+      setActionNote('');
+      showToast(`✅ Action taken: ${modAction.label}`);
+    } catch (err) {
+      showToast(`❌ ${err.message}`);
+    } finally {
+      setReportStatus(report.id, reached, reached === 'resolved' ? actionText : undefined);
+      setProcessing(false);
+    }
+  };
+
+  // Backend allows escalation from pending or reviewed. Escalated reports
+  // appear in the admin dashboard's "Escalated Reports" tab.
+  const escalateReport = async (report) => {
+    const note = actionNote.trim();
+    setProcessing(true);
+    try {
+      await moderationService.updateReportStatus(report.id, 'escalated', note || undefined);
+      setReportStatus(report.id, 'escalated');
+      setActionNote('');
+      showToast('⬆️ Escalated to admin');
+    } catch (err) {
+      showToast(`❌ ${err.message}`);
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const moveToReview = async (reportId) => {
     try {
       await moderationService.updateReportStatus(reportId, 'reviewed');
-    } catch {
-      // Proceed with local state update
+      setReportStatus(reportId, 'reviewed');
+      showToast('📋 Moved to In Review');
+    } catch (err) {
+      showToast(`❌ ${err.message}`);
     }
-    setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, status: 'reviewed' } : r)));
-    showToast('📋 Moved to In Review');
   };
 
   const queueCounts = QUEUE_TABS.reduce((acc, tab) => {
@@ -141,6 +191,7 @@ export default function useModPanel() {
     actionNote,
     setActionNote,
     takeAction,
+    escalateReport,
     moveToReview,
     processing,
     // Toast

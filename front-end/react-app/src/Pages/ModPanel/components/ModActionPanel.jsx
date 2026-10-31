@@ -25,13 +25,18 @@ export default function ModActionPanel({
   processing,
   onTakeAction,
   onMoveToReview,
+  onEscalate,
   queueCounts,
   recentActions,
 }) {
+  // Moderators act only on pending/reviewed reports. Escalated ones belong to
+  // the admin, resolved ones are finished.
+  const canAct = selectedReport && ['pending', 'reviewed'].includes(selectedReport.status);
+
   return (
     <div className="mp-action-panel">
       {/* ---- Action Section ---- */}
-      {selectedReport && selectedReport.status !== 'resolved' ? (
+      {canAct ? (
         <div className="mp-ap-section">
           <div className="mp-ap-section-title">Take Action</div>
 
@@ -45,19 +50,29 @@ export default function ModActionPanel({
           )}
 
           <div className="mp-actions-grid">
-            {MOD_ACTIONS.map(({ label, action }) => (
+            {/* The whole action object is passed so the hook knows which sanction to create */}
+            {MOD_ACTIONS.map((modAction) => (
               <button
-                key={action}
-                className={`mp-act-btn ${ACTION_STYLES[action] || 'dismiss'}`}
-                onClick={() => onTakeAction(label, selectedReport.id)}
+                key={modAction.action}
+                className={`mp-act-btn ${ACTION_STYLES[modAction.action] || 'dismiss'}`}
+                onClick={() => onTakeAction(modAction, selectedReport)}
                 disabled={processing}
-                title={label}
+                title={modAction.label}
               >
-                <span className="mp-act-btn-icon">{ACTION_ICONS[action] || '⚡'}</span>
-                <span>{label}</span>
+                <span className="mp-act-btn-icon">{ACTION_ICONS[modAction.action] || '⚡'}</span>
+                <span>{modAction.label}</span>
               </button>
             ))}
           </div>
+
+          <button
+            className="mp-btn-review"
+            style={{ marginTop: '10px' }}
+            onClick={() => onEscalate(selectedReport)}
+            disabled={processing}
+          >
+            ⬆️ Escalate to Admin
+          </button>
         </div>
       ) : (
         <div className="mp-ap-section">
@@ -65,6 +80,8 @@ export default function ModActionPanel({
           <div style={{ fontSize: '12px', color: '#334155', textAlign: 'center', padding: '12px 0' }}>
             {selectedReport?.status === 'resolved'
               ? '✅ Report is resolved'
+              : selectedReport?.status === 'escalated'
+              ? '⬆️ Escalated to admin'
               : 'Select a report from the queue'}
           </div>
         </div>

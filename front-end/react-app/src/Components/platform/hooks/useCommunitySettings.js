@@ -165,15 +165,36 @@ export default function useCommunitySettings() {
     showToast(`Channel #${cleanName} created`);
   };
 
-  const handleBannerUpload = (e) => {
+  // Upload the image to POST /api/uploads first and keep only the short URL
+  // it returns (e.g. "/uploads/abc.png"). Previously the whole image was put
+  // in `banner` as a base64 string, which the backend DTO rejects (max 300
+  // chars), so Save failed with 400.
+  const handleBannerUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        handleFieldChange('banner', reader.result);
-        showToast('📷 Banner updated! Save to persist.');
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    const su = getStoredUser();
+    const upload = new FormData();
+    upload.append('file', file);
+    try {
+      // No Content-Type header: the browser sets the multipart boundary itself.
+      const res = await fetch(`${API_BASE}/uploads`, {
+        method: 'POST',
+        headers: {
+          'x-role': su?.role || 'user',
+          ...(su?.id ? { 'x-user-id': String(su.id) } : {}),
+        },
+        body: upload,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        showToast(`⚠️ ${body?.message || 'Banner upload failed'}`);
+        return;
+      }
+      const { fileUrl } = await res.json();
+      handleFieldChange('banner', fileUrl);
+      showToast('📷 Banner updated! Save to persist.');
+    } catch {
+      showToast('⚠️ Could not reach the backend');
     }
   };
 

@@ -21,6 +21,15 @@ function getUser() {
   };
 }
 
+// Backend stores reactions as { "👍": [userId, userId, ...] } (who reacted).
+// The count is the array length. Emojis with nobody left are hidden.
+function toReactionList(reactions) {
+  if (!reactions || typeof reactions !== 'object') return [];
+  return Object.entries(reactions)
+    .map(([emoji, userIds]) => ({ emoji, count: Array.isArray(userIds) ? userIds.length : 0 }))
+    .filter((r) => r.count > 0);
+}
+
 /**
  * Manages all state, effects, and handlers for the Chat page.
  * Returns state and callbacks for the channel sidebar, message feed, input area, etc.
@@ -116,20 +125,25 @@ export default function useChat() {
     fetchMembers();
   }, [communityId, user.role]);
 
-  // Fetch messages for the active channel
+  // Fetch messages for the active channel of THIS community.
+  // Channel ids like "general" exist in every community, so we filter by
+  // both communityId and channelId (GET /messages?communityId=&channelId=).
+  // The old call /channels/:id/messages filtered by channel only and mixed
+  // messages from all communities.
   useEffect(() => {
     async function fetchMessages() {
       if (!activeChannel?.id) return;
+      if (!communityId) {
+        setMessages([]); // no community selected -> nothing to show
+        return;
+      }
       try {
-        const data = await apiRequest(`/channels/${activeChannel.id}/messages`);
+        const data = await apiRequest(
+          `/messages?communityId=${encodeURIComponent(communityId)}&channelId=${encodeURIComponent(activeChannel.id)}`
+        );
         if (Array.isArray(data)) {
           setMessages(data.map(m => {
-            const reactionsArr = [];
-            if (m.reactions && typeof m.reactions === 'object') {
-              for (const [emoji, count] of Object.entries(m.reactions)) {
-                reactionsArr.push({ emoji, count: Number(count) });
-              }
-            }
+            const reactionsArr = toReactionList(m.reactions);
             const authorName = m.authorName || m.author?.name || m.author || 'User';
             return {
               id:        m.id,
@@ -151,7 +165,7 @@ export default function useChat() {
       }
     }
     fetchMessages();
-  }, [activeChannel?.id, user.role]);
+  }, [activeChannel?.id, communityId, user.role]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -160,7 +174,9 @@ export default function useChat() {
 
   const sendMessage = async () => {
     const text = msgInput.trim();
-    if (!text || !activeChannel?.id) return;
+    // Every message must belong to a real community. Before, a missing
+    // communityId fell back to community 1, so messages ended up there.
+    if (!text || !activeChannel?.id || !communityId) return;
 
     const fullContent  = replyTo ? `↩️ ${replyTo}: ${text}` : text;
     const authorName   = user.username || user.firstName || 'User';
@@ -184,7 +200,7 @@ export default function useChat() {
         body:    JSON.stringify({
           channelId:  String(activeChannel.id),
           content:    fullContent,
-          communityId: Number(communityId) || 1,
+          communityId: Number(communityId),
           authorId:   user?.id ? Number(user.id) : undefined,
           authorName,
         }),
@@ -199,18 +215,12 @@ export default function useChat() {
     }
   };
 
+  // The backend toggles: first click adds your reaction, second click removes
+  // it. It returns the updated message, so we show its real reaction counts
+  // instead of guessing "+1" locally.
   const toggleReaction = async (msgId, emoji) => {
-    setMessages(prev => prev.map(m => {
-      if (m.id !== msgId) return m;
-      const existing  = m.reactions.find(r => r.emoji === emoji);
-      const reactions = existing
-        ? m.reactions.map(r => r.emoji === emoji ? { ...r, count: r.count + 1 } : r)
-        : [...m.reactions, { emoji, count: 1 }];
-      return { ...m, reactions };
-    }));
-
     try {
-      await apiRequest(`/messages/${msgId}/reactions`, {
+      const updated = await apiRequest(`/messages/${msgId}/reactions`, {
         method:  'POST',
         body:    JSON.stringify({
           emoji,
@@ -218,7 +228,12 @@ export default function useChat() {
           actorName: user.username || user.firstName,
         }),
       });
-    } catch {}
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, reactions: toReactionList(updated?.reactions) } : m
+      ));
+    } catch (err) {
+      console.error('Failed to react:', err);
+    }
   };
 
   const filteredChannels = channels.filter(c =>

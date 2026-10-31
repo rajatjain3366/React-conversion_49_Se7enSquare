@@ -74,14 +74,21 @@ export default function useAppeal() {
     apiRequest('/sanctions/mine')
       .then((sanctions) => {
         if (cancelled || !Array.isArray(sanctions)) return;
-        const active = sanctions.find(
-          (s) => s.active && (s.type === 'ban' || s.type === 'suspend')
+        // Backend SanctionRecord fields: status ('active' | 'reversed') and
+        // expiresAt (null = permanent). The old code read s.active / s.endsAt,
+        // which don't exist, so no sanction was ever shown.
+        // Newest first; skip reversed or already-expired sanctions.
+        const now = Date.now();
+        const active = [...sanctions].reverse().find(
+          (s) => s.status === 'active' &&
+            (s.type === 'ban' || s.type === 'suspend') &&
+            (!s.expiresAt || new Date(s.expiresAt).getTime() > now)
         );
         if (active && !cancelled) {
           setAction({
             type: active.type === 'ban' ? 'Account Ban' : 'Account Suspension',
             reason: active.reason || 'Violation of community guidelines',
-            until: active.endsAt || null,
+            until: active.expiresAt || null,
             id: `SAN-${active.id}`,
           });
         }
@@ -122,6 +129,16 @@ export default function useAppeal() {
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!validate()) return;
+
+    // POST /appeals needs a logged-in user (x-user-id header). Banned or
+    // suspended users cannot log in, so without a session the request can
+    // only fail. Say so honestly instead of showing a fake reference.
+    if (!user.id) {
+      setErrors({
+        submit: 'You must be logged in to submit an appeal. Banned or suspended accounts cannot log in, so please contact an administrator.',
+      });
+      return;
+    }
     setSubmitting(true);
 
     const payload = {
@@ -133,16 +150,16 @@ export default function useAppeal() {
       evidence: [],
     };
 
+    // Show the success screen only with the real appeal ID from the backend.
     try {
       const data = await appealService.createAppeal(payload);
-      setRefId(`APL-${data.id || Date.now()}`);
+      setRefId(`APL-${data.id}`);
       fetchAppeals();
+      setSubmitted(true);
     } catch (err) {
-      console.warn('Appeal creation fallback:', err);
-      setRefId(`APL-${Date.now()}`);
+      setErrors({ submit: `Appeal not sent: ${err.message}` });
     } finally {
       setSubmitting(false);
-      setSubmitted(true);
     }
   };
 

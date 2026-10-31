@@ -83,12 +83,15 @@ export default function TournamentRow({
               Registrants
             </button>
           )}
-          <button
-            className="act-btn act-delete"
-            onClick={() => onDelete && onDelete(event.id)}
-          >
-            Delete
-          </button>
+          {/* Only shown when the parent passes onDelete (admin only) */}
+          {onDelete && (
+            <button
+              className="act-btn act-delete"
+              onClick={() => onDelete(event.id)}
+            >
+              Delete
+            </button>
+          )}
         </div>
       </td>
     </tr>

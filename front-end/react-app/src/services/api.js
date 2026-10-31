@@ -71,6 +71,28 @@ export function storeUserSession(user) {
 }
 
 /**
+ * If an admin changes a user's role, the session in localStorage still has the
+ * OLD role, so every request sends a stale x-role header. The backend guard
+ * (auth-context.guard.ts) then answers 403 "Role mismatch: declared role does
+ * not match user account role in database". In that case we log out and send
+ * the user to /login so they get a fresh session with the new role.
+ *
+ * Note: roles.guard.ts also says "Role mismatch: access denied" when a role is
+ * simply not allowed to do something. That one must NOT log out, so we match
+ * only the "declared role does not match" text.
+ * Returns true if it handled the error.
+ */
+export function handleRoleMismatch(data) {
+  const message = data && typeof data === 'object' ? String(data.message || '') : '';
+  if (!message.includes('declared role does not match')) return false;
+  clearUserSession();
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login?roleChanged=1';
+  }
+  return true;
+}
+
+/**
  * Standardized HTTP request handler with automatic JSON serialization and role/identity headers.
  */
 export async function apiRequest(endpoint, options = {}) {
@@ -123,6 +145,9 @@ export async function apiRequest(endpoint, options = {}) {
     error.reason = data?.reason || null;
     error.until = data?.until || null;
     error.data = data;
+
+    // Stale role in the session (admin changed it) -> log out, go to /login
+    if (response.status === 403) handleRoleMismatch(data);
 
     // Handle suspended and banned accounts
     if (data?.code === 'ACCOUNT_BANNED' || data?.code === 'ACCOUNT_SUSPENDED') {

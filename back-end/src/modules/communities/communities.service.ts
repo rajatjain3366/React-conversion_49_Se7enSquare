@@ -63,6 +63,19 @@ export class CommunitiesService {
     };
 
     db.communities.push(created);
+
+    // The creator becomes a member with role 'owner' immediately. Before,
+    // this membership was only added by the start-up migration, so a new
+    // community showed 0 members (and no owner) until the server restarted.
+    // The migration skips it on restart because it already exists.
+    db.memberships.push({
+      id: nextId('membership'),
+      userId: resolvedOwnerId,
+      communityId: created.id,
+      role: 'owner',
+      joinedAt: new Date().toISOString(),
+    });
+
     saveDb();
     return created;
   }

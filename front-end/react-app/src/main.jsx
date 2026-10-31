@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './styles/global.css';
 import App from './App.jsx';
-import { API_BASE, clearUserSession } from './services/api';
+import { API_BASE, clearUserSession, handleRoleMismatch } from './services/api';
 
 /**
  * TEMPORARY: Person A fetch shim
@@ -47,6 +47,8 @@ window.fetch = async (input, init = {}) => {
       const contentType = clone.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const body = await clone.json();
+        // Same stale-role check as apiRequest, for pages that call fetch directly
+        if (response.status === 403) handleRoleMismatch(body);
         if (body && (body.code === 'ACCOUNT_BANNED' || body.code === 'ACCOUNT_SUSPENDED')) {
           const isAppeal = window.location.pathname.startsWith('/appeal');
           if (body.code === 'ACCOUNT_BANNED' || !isAppeal) {
