@@ -287,7 +287,16 @@ export function useOrganizerData() {
         );
         showToast('✅ Tournament updated');
       }
-    } catch {
+    } catch (err) {
+      // err.status is set only when the backend answered (see eventService).
+      // Then it rejected the request on purpose (plan limit, date clash,
+      // validation), so show the real reason and keep the modal open.
+      // Before, every error fell through to "created (locally)" below.
+      if (err.status) {
+        showToast(`⚠️ ${err.message}`);
+        return;
+      }
+      // Backend unreachable: keep the existing local fallback.
       if (modalMode === 'create') {
         const localCreated = { ...payload, id: Date.now() };
         setMyEvents((prev) => [localCreated, ...prev]);

@@ -39,7 +39,15 @@ export const eventService = {
       headers: getHeaders(headers),
       body: JSON.stringify(safePayload),
     });
-    if (!res.ok) throw new Error(`Failed to create event: ${res.statusText}`);
+    if (!res.ok) {
+      // Keep the backend's message (e.g. the free-plan tournament limit) and
+      // the HTTP status, so the page can show the real reason.
+      const data = await res.json().catch(() => ({}));
+      const msg = data.message || `Failed to create event (HTTP ${res.status})`;
+      const err = new Error(Array.isArray(msg) ? msg.join(', ') : msg);
+      err.status = res.status;
+      throw err;
+    }
     return res.json();
   },
 
@@ -54,7 +62,14 @@ export const eventService = {
       headers: getHeaders(headers),
       body: JSON.stringify(safePayload),
     });
-    if (!res.ok) throw new Error(`Failed to update event: ${res.statusText}`);
+    if (!res.ok) {
+      // Same as createEvent: pass on the backend's message and status.
+      const data = await res.json().catch(() => ({}));
+      const msg = data.message || `Failed to update event (HTTP ${res.status})`;
+      const err = new Error(Array.isArray(msg) ? msg.join(', ') : msg);
+      err.status = res.status;
+      throw err;
+    }
     return res.json();
   },
 
