@@ -19,6 +19,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | object = 'Internal server error';
+    // Extra fields some errors carry (see auth-context.guard.ts):
+    // { code: 'ACCOUNT_BANNED' | 'ACCOUNT_SUSPENDED', reason, until }.
+    const accountStatusFields: Record<string, any> = {};
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -26,6 +29,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof res === 'object' && res !== null && 'message' in res) {
         const msg = (res as any).message;
         message = Array.isArray(msg) ? msg.join(', ') : msg;
+        // Keep code/reason/until in the response. Before, only `message` was
+        // copied, so the frontend never saw code === 'ACCOUNT_BANNED' and its
+        // "log out and go to /login" redirect for sanctioned users never ran.
+        for (const key of ['code', 'reason', 'until']) {
+          if ((res as any)[key] !== undefined) accountStatusFields[key] = (res as any)[key];
+        }
       } else if (typeof res === 'string') {
         message = res;
       } else {
@@ -49,6 +58,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       success: false,
       statusCode: status,
       message: clientMessage,
+      ...accountStatusFields,
       path: request.url,
       timestamp: new Date().toISOString(),
     };
