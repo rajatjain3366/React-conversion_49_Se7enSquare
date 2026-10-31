@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../Components/Button';
+import Icon from '../Components/Icon';
 import useAuthForm from '../Components/platform/hooks/useAuthForm';
 import '../styles/login.css';
 
@@ -69,7 +70,7 @@ export default function Login() {
   } = useAuthForm();
 
   return (
-    <div className="login-page-container" style={{ minHeight: '100vh', width: '100%', position: 'relative', overflowX: 'hidden', overflowY: 'auto' }}>
+    <div className="login-page-container ui-v2" style={{ minHeight: '100vh', width: '100%', position: 'relative', overflowX: 'hidden', overflowY: 'auto' }}>
       {/* Back to Home Link */}
       <Link
         to="/landing"
@@ -158,7 +159,7 @@ export default function Login() {
                   gap: '6px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>⚠️</span>
+                    <Icon name="alert-circle" size={16} />
                     <span>{loginErrors.general}</span>
                   </div>
                   {(loginErrors.isSanctioned || (typeof window !== 'undefined' && window.location.search.includes('accountStatus'))) && (
@@ -224,7 +225,7 @@ export default function Login() {
                     onClick={() => setShowLoginPassword((prev) => !prev)}
                     aria-label="Toggle password visibility"
                   >
-                    {showLoginPassword ? '👁️' : '🙈'}
+                    {showLoginPassword ? <Icon name="eye" size={16} /> : <Icon name="eye-off" size={16} />}
                   </button>
                 </div>
                 {loginErrors.password && (
@@ -270,12 +271,12 @@ export default function Login() {
                   }}
                 >
                   <option value="">Auto-detect from Account</option>
-                  <option value="admin">🛡️ System Admin</option>
-                  <option value="owner">👑 Platform Owner</option>
-                  <option value="community_manager">📅 Community Manager</option>
-                  <option value="organizer">🏆 Organizer</option>
-                  <option value="moderator">🔍 Moderator</option>
-                  <option value="user">🎮 User</option>
+                  <option value="admin">System Admin</option>
+                  <option value="owner">Platform Owner</option>
+                  <option value="community_manager">Community Manager</option>
+                  <option value="organizer">Organizer</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="user">User</option>
                 </select>
                 {loginErrors.role && (
                   <span className="form-error visible">{loginErrors.role}</span>
@@ -302,7 +303,7 @@ export default function Login() {
                     className="demo-pill"
                     onClick={() => handleQuickLogin(p)}
                   >
-                    {p.icon} {p.name}
+                    {p.name}
                   </button>
                 ))}
               </div>
@@ -359,7 +360,7 @@ export default function Login() {
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <span>⚠️</span>
+                  <Icon name="alert-circle" size={16} />
                   <span>{regErrors.general}</span>
                 </div>
               )}
@@ -438,7 +439,7 @@ export default function Login() {
                     onClick={() => setShowRegPassword((prev) => !prev)}
                     aria-label="Toggle password visibility"
                   >
-                    {showRegPassword ? '👁️' : '🙈'}
+                    {showRegPassword ? <Icon name="eye" size={16} /> : <Icon name="eye-off" size={16} />}
                   </button>
                 </div>
                 {regErrors.password && (
@@ -476,7 +477,7 @@ export default function Login() {
                     onClick={() => setShowRegConfirm((prev) => !prev)}
                     aria-label="Toggle password visibility"
                   >
-                    {showRegConfirm ? '👁️' : '🙈'}
+                    {showRegConfirm ? <Icon name="eye" size={16} /> : <Icon name="eye-off" size={16} />}
                   </button>
                 </div>
                 {regErrors.confirm && (
@@ -496,9 +497,9 @@ export default function Login() {
                   onChange={(e) => setRegRole(e.target.value)}
                   required
                 >
-                  <option value="user">🎮 User</option>
-                  <option value="moderator">🔍 Moderator</option>
-                  <option value="organizer">🏆 Organizer</option>
+                  <option value="user">User</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="organizer">Organizer</option>
                 </select>
               </div>
 
@@ -571,7 +572,7 @@ export default function Login() {
           {currentTab === 'forgot' && (
             <form className="auth-form" onSubmit={handleForgotSubmit} noValidate>
               <div className="forgot-icon-wrap">
-                <div className="forgot-icon">🔒</div>
+                <div className="forgot-icon"><Icon name="lock" size={22} /></div>
               </div>
               <h2 className="forgot-title">Forgot Password</h2>
               <p className="forgot-desc">Enter your email address and we'll send you a link to reset your password.</p>
@@ -624,7 +625,7 @@ export default function Login() {
           {currentTab === 'forgot-success' && (
             <div className="auth-form" id="form-forgot-success">
               <div className="success-icon-wrap">
-                <div className="success-icon">✉️</div>
+                <div className="success-icon"><Icon name="mail" size={22} /></div>
               </div>
               <h2 className="forgot-title">Check Your Email</h2>
               <p className="forgot-desc">
