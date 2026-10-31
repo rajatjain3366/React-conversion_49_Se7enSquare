@@ -10,7 +10,9 @@ export default function BannerUpload({ banner, onUpload }) {
       <div
         className="current-banner"
         style={{
-          backgroundImage: banner ? `url(${banner})` : 'none',
+          // Gradient (from the Create wizard) is used as-is; an uploaded image
+          // URL is wrapped in url(). url(linear-gradient(...)) rendered blank.
+          backgroundImage: !banner ? 'none' : banner.includes('gradient(') ? banner : `url(${banner})`,
           backgroundColor: banner ? 'transparent' : 'rgba(255,255,255,0.05)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
