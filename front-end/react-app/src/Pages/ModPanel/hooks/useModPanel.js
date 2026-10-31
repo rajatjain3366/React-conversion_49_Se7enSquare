@@ -52,16 +52,34 @@ export default function useModPanel() {
             } catch { /* keep the ID */ }
           }));
 
+          // Same for community reports: look up the community name once.
+          const communityIds = [...new Set(data.filter((r) => r.targetType === 'community').map((r) => r.targetId))];
+          const communityNames = {};
+          await Promise.all(communityIds.map(async (cid) => {
+            try {
+              const c = await moderationService.getCommunity(cid);
+              if (c?.name) communityNames[cid] = c.name;
+            } catch { /* deleted community: keep the ID */ }
+          }));
+
+          // What the report is about, shown in the queue, detail view and
+          // recent actions. A post/community targetId is NOT a user ID, so it
+          // must not be shown as "@4" like a username.
+          const targetLabel = (r) => {
+            if (r.targetType === 'post') return `Post #${r.targetId}`;
+            if (r.targetType === 'community') {
+              return `Community: ${communityNames[r.targetId] || `#${r.targetId}`}`;
+            }
+            return `@${usernames[r.targetId] || r.reportedUser?.username || r.targetId || 'Unknown'}`;
+          };
+
           const mapped = data.map((r) => ({
             id: r.id,
             ref: r.ref || `RPT-${r.id}`,
             type: r.targetType || 'message',
             targetId: r.targetId, // needed to sanction the reported user
-            // Always a string: the queue search calls .toLowerCase() on it.
-            // (usernames only for user reports: a post's targetId is a post ID)
-            reportedUser: String(
-              (r.targetType === 'user' && usernames[r.targetId]) || r.reportedUser?.username || r.targetId || 'Unknown'
-            ),
+            // Display label, always a string (the queue search calls .toLowerCase()).
+            reportedUser: targetLabel(r),
             channel: r.channel || '#general',
             reason: r.reason || 'Violation',
             status: r.status || 'pending',

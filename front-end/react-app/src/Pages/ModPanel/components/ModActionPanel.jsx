@@ -124,7 +124,7 @@ export default function ModActionPanel({
               <div className="mp-recent-dot" />
               <div className="mp-recent-info">
                 <div className="mp-recent-action">{r.action}</div>
-                <div className="mp-recent-meta">@{r.reportedUser} · {r.ref}</div>
+                <div className="mp-recent-meta">{r.reportedUser} · {r.ref}</div>
               </div>
             </div>
           ))

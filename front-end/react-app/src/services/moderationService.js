@@ -30,6 +30,11 @@ export const moderationService = {
     return await apiRequest(`/users/${userId}`);
   },
 
+  // GET /communities/:id: used to show the community's name on community reports.
+  async getCommunity(communityId) {
+    return await apiRequest(`/communities/${communityId}`);
+  },
+
   // POST /sanctions (moderator or admin). Stores the sanction and notifies
   // the user. It does NOT change the account status (only admin ban/suspend does).
   async createSanction(payload) {

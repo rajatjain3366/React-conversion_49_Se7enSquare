@@ -28,7 +28,7 @@ export default function ReportDetailView({ selectedReport, actionNote, onActionN
       <div className="mp-dp-header">
         <div className="mp-dp-top">
           <div className="mp-dp-title" id="dpTitle">
-            {selectedReport.ref} — @{selectedReport.reportedUser}
+            {selectedReport.ref} — {selectedReport.reportedUser}
           </div>
           <span className={`mp-dp-status-badge ${statusClass}`} id="dpAction">
             {selectedReport.status?.charAt(0).toUpperCase() + selectedReport.status?.slice(1)}

@@ -82,7 +82,7 @@ export default function ReportQueueList({
                 <span className="mp-qi-ref">{report.ref}</span>
                 <span className={`mp-qi-sev sev-${report.severity}`}>{report.severity}</span>
               </div>
-              <div className="mp-qi-user">@{report.reportedUser}</div>
+              <div className="mp-qi-user">{report.reportedUser /* "@name", "Post #1" or "Community: name" */}</div>
               <div className="mp-qi-reason">{report.reason}</div>
               <div className="mp-qi-time">{report.date}</div>
             </div>
