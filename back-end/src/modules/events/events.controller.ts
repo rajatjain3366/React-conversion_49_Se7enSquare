@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
@@ -21,12 +22,26 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AppRole } from '../rbac/role.enum';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EventDto } from './dto/event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventsService } from './events.service';
+
+// Only a community manager or admin may set an event's status to "approved".
+// Everyone else (e.g. an organizer) creates/edits events that stay pending
+// until a community manager approves them on the Event Approval page.
+// `role` comes from the user record in the database (via the auth guard),
+// not from the x-role header.
+const APPROVER_ROLES: string[] = [AppRole.COMMUNITY_MANAGER, AppRole.ADMIN];
+
+function assertCanSetStatus(role: string, status?: string) {
+  if (status === 'approved' && !APPROVER_ROLES.includes(role)) {
+    throw new ForbiddenException('Only a community manager or admin can approve events');
+  }
+}
 
 @ApiTags('events')
 @ApiHeader({
@@ -98,7 +113,8 @@ export class EventsController {
   }
 
   @Post()
-  @Roles(AppRole.ADMIN, AppRole.COMMUNITY_MANAGER, AppRole.MODERATOR, AppRole.USER, AppRole.ORGANIZER)
+  // Only organizers and admins create events (was: also user, moderator, community_manager).
+  @Roles(AppRole.ADMIN, AppRole.ORGANIZER)
   @ApiOperation({
     summary: 'Create an event',
     description: 'Creates an event request. Users submit pending events; Community Managers/Admins can publish approved events.',
@@ -106,7 +122,8 @@ export class EventsController {
   @ApiBody({ type: CreateEventDto, description: 'Event creation payload' })
   @ApiCreatedResponse({ type: EventDto, description: 'The newly created event' })
   @ApiForbiddenResponse({ description: 'Missing or invalid x-role header' })
-  create(@Body() payload: CreateEventDto) {
+  create(@Body() payload: CreateEventDto, @CurrentUser('role') role: string) {
+    assertCanSetStatus(role, payload.status);
     return this.eventsService.create(payload);
   }
 
@@ -124,7 +141,9 @@ export class EventsController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateEventDto,
+    @CurrentUser('role') role: string,
   ) {
+    assertCanSetStatus(role, payload.status);
     return this.eventsService.update(id, payload);
   }
 
