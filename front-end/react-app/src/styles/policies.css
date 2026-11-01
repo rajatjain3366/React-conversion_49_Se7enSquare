@@ -1,0 +1,139 @@
+.policy-page {
+  min-height: 100vh;
+  background: #0D1117;
+  color: #C9D1D9;
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.policy-header {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  border-bottom: 1px solid #30363D;
+  background: rgba(13, 17, 23, 0.92);
+}
+
+.policy-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #FFFFFF;
+  font-family: "Syne", sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.policy-logo {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #58A6FF, #1F6FEB);
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  color: #0D1117;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.policy-back-link {
+  color: #8B949E;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.policy-back-link:hover,
+.policy-brand:hover {
+  color: #79C0FF;
+}
+
+.policy-main {
+  width: min(920px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 72px 0 96px;
+}
+
+.policy-intro {
+  margin-bottom: 32px;
+}
+
+.policy-eyebrow {
+  margin-bottom: 12px;
+  color: #58A6FF;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.policy-intro h1 {
+  margin-bottom: 14px;
+  color: #FFFFFF;
+  font-family: "Syne", sans-serif;
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.1;
+}
+
+.policy-intro > p:not(.policy-eyebrow):not(.policy-updated) {
+  max-width: 680px;
+  color: #8B949E;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.policy-updated {
+  margin-top: 16px;
+  color: #6E7681;
+  font-size: 13px;
+}
+
+.policy-card {
+  padding: 36px 40px;
+  background: #161B22;
+  border: 1px solid #30363D;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+}
+
+.policy-section + .policy-section {
+  margin-top: 32px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(240, 246, 252, 0.08);
+}
+
+.policy-section h2 {
+  margin-bottom: 12px;
+  color: #FFFFFF;
+  font-family: "Syne", sans-serif;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.policy-section p {
+  color: #C9D1D9;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.policy-section p + p {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .policy-header {
+    height: 60px;
+    padding: 0 20px;
+  }
+
+  .policy-main {
+    width: min(100% - 28px, 920px);
+    padding: 48px 0 64px;
+  }
+
+  .policy-card {
+    padding: 26px 22px;
+  }
+}

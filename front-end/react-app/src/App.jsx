@@ -5,6 +5,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Index from './Pages/Index';
 import Landing from './Pages/Landing';
 import Login from './Pages/Login';
+import Terms from './Pages/Terms';
+import Privacy from './Pages/Privacy';
 import Pricing from './Pages/Pricing';
 import Dashboard from './Pages/Dashboard';
 import Chat from './Pages/Chat';
@@ -64,6 +66,10 @@ export default function App() {
       <Route path="/landing.html" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/login.html" element={<Login />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/terms.html" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/privacy.html" element={<Privacy />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/pricing.html" element={<Pricing />} />
 

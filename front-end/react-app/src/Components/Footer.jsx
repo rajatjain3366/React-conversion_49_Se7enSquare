@@ -59,6 +59,8 @@ export default function Footer() {
               <Link to="/mod-panel" className="ft-link">AutoMod Shield</Link>
               <Link to="/report" className="ft-link">Safety & Reports</Link>
               <Link to="/appeal" className="ft-link">Appeals Portal</Link>
+              <Link to="/terms" className="ft-link">Terms &amp; Conditions</Link>
+              <Link to="/privacy" className="ft-link">Privacy Policy</Link>
               <Link to="/login" className="ft-link">Sign In</Link>
             </div>
           </div>

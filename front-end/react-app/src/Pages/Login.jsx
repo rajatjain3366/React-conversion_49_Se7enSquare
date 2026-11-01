@@ -512,7 +512,7 @@ export default function Login() {
                 />
                 <span className="checkbox-custom"></span>
                 <span className="checkbox-label">
-                  I agree to the <a href="#terms">Terms of Service</a> and <a href="#privacy">Privacy Policy</a>
+                  I agree to the <Link to="/terms">Terms &amp; Conditions</Link> and <Link to="/privacy">Privacy Policy</Link>
                 </span>
               </label>
               {regErrors.terms && (
@@ -654,4 +654,3 @@ export default function Login() {
     </div>
   );
 }
-
