@@ -1,57 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { toastShown } from '../../../store/slices/uiSlice';
-
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
-
-function getUser() {
-  try {
-    const raw = JSON.parse(
-      localStorage.getItem('user') ||
-      localStorage.getItem('nexus_user') ||
-      localStorage.getItem('currentUser') ||
-      '{}'
-    );
-    return {
-      id: raw.id,
-      role: raw.role || 'user',
-      username: raw.username || 'user',
-      firstName: raw.firstName || raw.name?.split(' ')[0] || 'User',
-    };
-  } catch {
-    return { role: 'user', username: 'user', firstName: 'User' };
-  }
-}
-
-function getJoinedIdList() {
-  try {
-    const list = JSON.parse(localStorage.getItem('nexus_joined_communities') || '[]');
-    return Array.isArray(list) ? list.map(String) : [];
-  } catch { return []; }
-}
-
-function setJoinedIdList(idStr, joined) {
-  const current = getJoinedIdList();
-  const next = joined
-    ? [...new Set([...current, idStr])]
-    : current.filter(x => x !== idStr);
-  localStorage.setItem('nexus_joined_communities', JSON.stringify(next));
-}
-
-function getOwnedIdList() {
-  try {
-    const list = JSON.parse(localStorage.getItem('nexus_owned_community_ids') || '[]');
-    return Array.isArray(list) ? list.map(String) : [];
-  } catch { return []; }
-}
-
-async function apiErrorMessage(res) {
-  try {
-    const body = await res.json();
-    const msg = body?.message;
-    return Array.isArray(msg) ? msg.join(', ') : (msg || `HTTP ${res.status}`);
-  } catch { return `HTTP ${res.status}`; }
-}
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import {
+  fetchCommunityPage,
+  fetchCommunityExtras,
+  fetchMyMemberships,
+  joinCommunity,
+  leaveCommunity,
+  deleteCommunity,
+  selectCurrentCommunity,
+  selectJoinedIds,
+} from '../../../store/slices/communitiesSlice';
 
 // Demo fallback used only to fill fields the API record doesn't carry.
 const DEFAULT_COMMUNITY = {
@@ -83,112 +43,43 @@ export function initialsFromName(name = '') {
 /**
  * Manages community data fetch, join/leave state, member lists, events,
  * and the delete action for the CommunityPage.
+ * The community, its members/events and the joined state come from the shared
+ * Redux communities slice, so joining here also shows on Discovery.
  */
 export default function useCommunityPage(id, navigate) {
-  const user = getUser();
-
-  const [community, setCommunity] = useState(null);
-  const [loadError, setLoadError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [joined, setJoined] = useState(() => getJoinedIdList().includes(String(id)));
-  const [memberSearch, setMemberSearch] = useState('');
-  const [members, setMembers] = useState(null); // null = still loading
-  const [events, setEvents] = useState([]);
   const dispatch = useDispatch();
+  const sessionUser = useSelector(selectCurrentUser);
+  const current = useSelector(selectCurrentCommunity);
+  const joinedIds = useSelector(selectJoinedIds);
+
+  const user = useMemo(() => ({
+    id: sessionUser?.id,
+    role: sessionUser?.role || 'user',
+    username: sessionUser?.username || 'user',
+    firstName: sessionUser?.firstName || sessionUser?.name?.split(' ')[0] || 'User',
+  }), [sessionUser]);
+
+  const [activeTab, setActiveTab] = useState('overview');
+  const [memberSearch, setMemberSearch] = useState('');
 
   const showToast = (msg) => dispatch(toastShown({ msg }));
 
-  const authHeaders = {
-    'x-role': user.role,
-    ...(user.id ? { 'x-user-id': String(user.id) } : {}),
-  };
+  // The record is merged with the defaults once per load, so effects see a stable object
+  const community = useMemo(
+    () => (current.community ? { ...DEFAULT_COMMUNITY, ...current.community } : null),
+    [current.community]
+  );
+  const joined = joinedIds.includes(String(id));
 
   useEffect(() => {
-    let cancelled = false;
-    async function fetchCommunity() {
-      setLoading(true);
-      try {
-        const commRes = await fetch(`${API_BASE}/communities/${id}`, { headers: authHeaders });
-        if (cancelled) return;
-        if (commRes.ok) {
-          const data = await commRes.json();
-          setCommunity({ ...DEFAULT_COMMUNITY, ...data });
-          setLoadError('');
-        } else {
-          setCommunity(null);
-          setLoadError(`Could not load community — ${await apiErrorMessage(commRes)}`);
-        }
-      } catch {
-        if (!cancelled) {
-          setCommunity(null);
-          setLoadError('Could not reach the backend. Is the NestJS server running?');
-        }
-      }
-      if (!cancelled) setLoading(false);
+    dispatch(fetchCommunityPage(id));
+    dispatch(fetchMyMemberships());
+  }, [dispatch, id, user.id]);
 
-      // Join state: localStorage is the source of truth (same as legacy),
-      // reconciled with the server's membership list.
-      if (user.id) {
-        try {
-          const memsRes = await fetch(`${API_BASE}/memberships?userId=${user.id}`, { headers: authHeaders });
-          if (!cancelled && memsRes.ok) {
-            const mems = await memsRes.json();
-            if (Array.isArray(mems)) {
-              setJoined(mems.some((m) => String(m.communityId) === String(id)));
-            }
-          }
-        } catch { /* keep localStorage-derived state */ }
-      }
-    }
-    fetchCommunity();
-    return () => { cancelled = true; };
-  }, [id, user.role, user.id]);
-
+  // Members and events are loaded once the community record is known
   useEffect(() => {
-    let cancelled = false;
-    async function fetchPageData() {
-      if (!community?.id) return;
-      try {
-        const eventsRes = await fetch(`${API_BASE}/events`, { headers: authHeaders });
-        if (!cancelled && eventsRes.ok) {
-          const all = await eventsRes.json();
-          if (Array.isArray(all)) {
-            setEvents(all.filter((e) =>
-              String(e.communityId) === String(community.id) && e.status === 'approved'
-            ));
-          }
-        }
-      } catch { /* events section stays empty */ }
-
-      try {
-        const [memsRes, usersRes] = await Promise.all([
-          fetch(`${API_BASE}/memberships?communityId=${community.id}`, { headers: authHeaders }),
-          fetch(`${API_BASE}/users?communityId=${community.id}`, { headers: authHeaders }),
-        ]);
-        if (cancelled) return;
-        const mems = memsRes.ok ? await memsRes.json() : [];
-        const users = usersRes.ok ? await usersRes.json() : [];
-        const usersById = new Map((Array.isArray(users) ? users : []).map((u) => [String(u.id), u]));
-        setMembers((Array.isArray(mems) ? mems : []).map((m) => {
-          const u = usersById.get(String(m.userId));
-          const isOwner = u && String(u.id) === String(community.ownerId);
-          const isMod = !isOwner && (u?.role === 'moderator' || u?.role === 'community_manager');
-          return {
-            userId: m.userId,
-            name: u ? (u.fullName || u.username) : `User #${m.userId}`,
-            avatar: u?.avatar,
-            role: isOwner ? 'owner' : (isMod ? 'moderator' : 'member'),
-            status: u?.status || 'active',
-          };
-        }));
-      } catch {
-        if (!cancelled) setMembers([]);
-      }
-    }
-    fetchPageData();
-    return () => { cancelled = true; };
-  }, [community, user.role]);
+    if (community?.id) dispatch(fetchCommunityExtras(community));
+  }, [dispatch, community]);
 
   const toggleJoin = async () => {
     if (!community?.id) return;
@@ -196,41 +87,16 @@ export default function useCommunityPage(id, navigate) {
       showToast('⚠️ Please log in to join communities.');
       return;
     }
-    const next = !joined;
-    setJoined(next);
-    setJoinedIdList(String(community.id), next);
     try {
-      if (next) {
-        const res = await fetch(`${API_BASE}/memberships`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-role': user.role, ...(user.id ? { 'x-user-id': String(user.id) } : {}) },
-          body: JSON.stringify({ userId: Number(user.id), communityId: Number(community.id) }),
-        });
-        if (!res.ok) {
-          const msg = await apiErrorMessage(res);
-          // Duplicate joins are harmless — the membership already exists.
-          if (!/already a member/i.test(msg)) throw new Error(msg);
-        }
-        showToast(`Welcome to ${community.name}! 🚀`);
-      } else {
-        const memsRes = await fetch(`${API_BASE}/memberships?userId=${user.id}`, { headers: { 'x-role': user.role, ...(user.id ? { 'x-user-id': String(user.id) } : {}) } });
-        if (!memsRes.ok) throw new Error(await apiErrorMessage(memsRes));
-        const mems = await memsRes.json();
-        const target = Array.isArray(mems)
-          ? mems.find((m) => String(m.communityId) === String(community.id) && String(m.userId) === String(user.id))
-          : null;
-        if (target) {
-          const delRes = await fetch(`${API_BASE}/memberships/${target.id}`, {
-            method: 'DELETE',
-            headers: { 'x-role': user.role, ...(user.id ? { 'x-user-id': String(user.id) } : {}) },
-          });
-          if (!delRes.ok) throw new Error(await apiErrorMessage(delRes));
-        }
+      if (joined) {
+        await dispatch(leaveCommunity(community.id)).unwrap();
         showToast('Left community.');
+      } else {
+        await dispatch(joinCommunity(community.id)).unwrap();
+        showToast(`Welcome to ${community.name}! 🚀`);
       }
     } catch (err) {
-      setJoined(!next);
-      setJoinedIdList(String(community.id), !next);
+      // The slice has already undone the optimistic change
       showToast(`⚠️ ${err.message}`);
     }
   };
@@ -239,29 +105,17 @@ export default function useCommunityPage(id, navigate) {
     if (!community?.id) return;
     if (!window.confirm(`Are you sure you want to permanently delete "${community.name}"? This action cannot be undone.`)) return;
     try {
-      const res = await fetch(`${API_BASE}/communities/${community.id}`, {
-        method: 'DELETE',
-        headers: { 'x-role': user.role, ...(user.id ? { 'x-user-id': String(user.id) } : {}) },
-      });
-      if (!res.ok) {
-        showToast(`⚠️ Could not delete community: ${await apiErrorMessage(res)}`);
-        return;
-      }
+      await dispatch(deleteCommunity(community.id)).unwrap();
     } catch (err) {
-      showToast(`⚠️ Could not reach the backend: ${err.message}`);
+      showToast(`⚠️ Could not delete community: ${err.message}`);
       return;
     }
-    // Mirror the deletion locally so discovery/settings stop listing it.
-    const idStr = String(community.id);
-    localStorage.setItem('nexus_owned_community_ids', JSON.stringify(getOwnedIdList().filter((x) => x !== idStr)));
-    localStorage.setItem('nexus_joined_communities', JSON.stringify(getJoinedIdList().filter((x) => x !== idStr)));
     showToast('🗑️ Community deleted.');
     setTimeout(() => navigate('/discovery'), 600);
   };
 
   // Owner gate: compare against the community record's ownerId from the server,
-  // or grant admin full access. localStorage is NOT used here — any user could
-  // tamper with nexus_owned_community_ids to gain owner UI.
+  // or grant admin full access.
   const isOwner =
     (user.id && String(community?.ownerId) === String(user.id)) ||
     user.role === 'admin';
@@ -278,6 +132,7 @@ export default function useCommunityPage(id, navigate) {
 
   const rules = community?.rules?.length ? community.rules : DEFAULT_RULES;
 
+  const members = current.members;
   const filteredMembers = (members || []).filter((m) =>
     !memberSearch ||
     m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
@@ -286,11 +141,11 @@ export default function useCommunityPage(id, navigate) {
 
   return {
     user,
-    community, loading, loadError,
+    community, loading: current.loading, loadError: current.error,
     activeTab, setActiveTab,
     joined, toggleJoin,
     memberSearch, setMemberSearch,
-    members, events,
+    members, events: current.events,
     isOwner,
     channelEntries, foundedLabel, rules, filteredMembers,
     showToast,

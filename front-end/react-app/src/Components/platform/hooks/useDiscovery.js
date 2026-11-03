@@ -1,88 +1,54 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { toastShown } from '../../../store/slices/uiSlice';
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import {
+  fetchCommunityList,
+  fetchMyMemberships,
+  joinCommunity,
+  leaveCommunity,
+  selectCommunityList,
+  selectCommunityListLoading,
+  selectCommunityListError,
+  selectJoinedIds,
+} from '../../../store/slices/communitiesSlice';
 import { memberCountOf, onlineCountOf } from '../data/discoveryData';
-
-import { apiRequest, getStoredUser } from '../../../services/api';
-
-
-function getJoinedIdList() {
-  try {
-    const list = JSON.parse(localStorage.getItem('nexus_joined_communities') || '[]');
-    return Array.isArray(list) ? list.map(String) : [];
-  } catch { return []; }
-}
-
-function setJoinedIdList(idStr, joined) {
-  const next = joined
-    ? [...new Set([...getJoinedIdList(), idStr])]
-    : getJoinedIdList().filter(x => x !== idStr);
-  localStorage.setItem('nexus_joined_communities', JSON.stringify(next));
-}
+import { apiRequest } from '../../../services/api';
 
 /**
  * Manages community listings, search/category filters, sorting, and
  * join/leave toggling for the Discovery page.
+ * Communities and joined ids come from the shared Redux communities slice;
+ * the search, category and sort controls are page-only UI state.
  */
 export default function useDiscovery() {
-  const [communities, setCommunities] = useState([]);
+  const dispatch = useDispatch();
+  const user = useSelector(selectCurrentUser);
+  const communities = useSelector(selectCommunityList);
+  const loading = useSelector(selectCommunityListLoading);
+  const loadWarning = useSelector(selectCommunityListError);
+  const joinedIdList = useSelector(selectJoinedIds);
+  const joinedIds = useMemo(() => new Set(joinedIdList), [joinedIdList]);
+
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('active');
   const [showSort, setShowSort] = useState(false);
-  const [joinedIds, setJoinedIds] = useState(() => new Set(getJoinedIdList()));
-  const [loading, setLoading] = useState(true);
-  const [loadWarning, setLoadWarning] = useState('');
   const [eventCount, setEventCount] = useState(null);
-  const dispatch = useDispatch();
 
   const showToast = (msg) => dispatch(toastShown({ msg }));
 
   useEffect(() => {
+    dispatch(fetchCommunityList());
+    dispatch(fetchMyMemberships());
+
+    // Event count for the stats bar (non-critical)
     let cancelled = false;
-    async function fetchData() {
-      const user = getStoredUser();
-
-      // --- 1. Fetch communities (primary) ---
-      try {
-        const data = await apiRequest('/communities');
-        if (cancelled) return;
-        // Filter out suspended communities — they must not appear on the discovery page
-        const activeCommunities = Array.isArray(data)
-          ? data.filter(c => (c.status || 'active').toLowerCase() !== 'suspended')
-          : [];
-        setCommunities(activeCommunities);
-        setLoadWarning('');
-      } catch (err) {
-        if (!cancelled) {
-          setCommunities([]);
-          setLoadWarning(err.message || 'Could not load communities.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-
-      // --- 2. Fetch memberships independently (non-critical) ---
-      if (user?.id) {
-        try {
-          const mems = await apiRequest(`/memberships?userId=${user.id}`);
-          if (!cancelled && Array.isArray(mems)) {
-            const ids = new Set(getJoinedIdList());
-            mems.forEach(m => ids.add(String(m.communityId)));
-            if (!cancelled) setJoinedIds(ids);
-          }
-        } catch { /* ignore — user just won't see server-side joined state */ }
-      }
-
-      // --- 3. Fetch events independently (non-critical) ---
-      try {
-        const events = await apiRequest('/events');
-        if (Array.isArray(events) && !cancelled) setEventCount(events.length);
-      } catch { /* ignore — event count stays null */ }
-    }
-    fetchData();
+    apiRequest('/events')
+      .then((events) => { if (!cancelled && Array.isArray(events)) setEventCount(events.length); })
+      .catch(() => { /* event count stays null */ });
     return () => { cancelled = true; };
-  }, []);
+  }, [dispatch]);
 
   const categories = useMemo(() => {
     const cats = [];
@@ -103,8 +69,7 @@ export default function useDiscovery() {
         const matchCat = activeCategory === 'All' ||
           (c.category || '').toLowerCase() === cat ||
           (c.tags || []).some(t => String(t).toLowerCase() === cat);
-        const notSuspended = (c.status || 'active').toLowerCase() !== 'suspended';
-        return matchSearch && matchCat && notSuspended;
+        return matchSearch && matchCat;
       })
       .sort((a, b) => {
         if (sortBy === 'members') return memberCountOf(b) - memberCountOf(a);
@@ -126,51 +91,22 @@ export default function useDiscovery() {
 
   const toggleJoin = async (id, e) => {
     e.stopPropagation();
-    const user = getStoredUser();
     if (!user || user.id === undefined || user.id === null) {
       showToast('⚠️ Please log in to join communities.');
       return;
     }
     const idStr = String(id);
-    const isJoined = joinedIds.has(idStr);
-
-    // Optimistic UI + localStorage update, reverted on real failures.
-    setJoinedIds(prev => {
-      const next = new Set(prev);
-      if (isJoined) next.delete(idStr); else next.add(idStr);
-      return next;
-    });
-    setJoinedIdList(idStr, !isJoined);
-
     try {
-      if (isJoined) {
-        const mems = await apiRequest(`/memberships?userId=${user.id}`);
-        const target = Array.isArray(mems)
-          ? mems.find(m => String(m.communityId) === idStr && String(m.userId) === String(user.id))
-          : null;
-        if (target) {
-          await apiRequest(`/memberships/${target.id}`, { method: 'DELETE' });
-        }
+      if (joinedIds.has(idStr)) {
+        await dispatch(leaveCommunity(idStr)).unwrap();
         showToast('Left community.');
       } else {
-        try {
-          await apiRequest('/memberships', {
-            method: 'POST',
-            body: JSON.stringify({ userId: Number(user.id), communityId: Number(id) }),
-          });
-        } catch (postErr) {
-          if (!/already a member/i.test(postErr.message)) throw postErr;
-        }
+        await dispatch(joinCommunity(idStr)).unwrap();
         const comm = communities.find(c => String(c.id) === idStr);
         showToast(comm ? `Welcome to ${comm.name}! ⚡` : 'Joined community.');
       }
     } catch (err) {
-      setJoinedIds(prev => {
-        const next = new Set(prev);
-        if (isJoined) next.add(idStr); else next.delete(idStr);
-        return next;
-      });
-      setJoinedIdList(idStr, isJoined);
+      // The slice has already undone the optimistic change
       showToast(`⚠️ ${err.message}`);
     }
   };

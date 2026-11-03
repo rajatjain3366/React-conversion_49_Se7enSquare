@@ -1,22 +1,32 @@
 import { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { toastShown } from '../../../store/slices/uiSlice';
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import {
+  fetchCommunityList,
+  createCommunity,
+  addChannel,
+  selectCommunityList,
+} from '../../../store/slices/communitiesSlice';
 import {
   URL_PATTERN, CATEGORIES, ICONS, BANNERS, DEFAULT_CHANNELS, DEFAULT_PERMISSIONS,
 } from '../data/createCommunityOptions';
-
-import { apiRequest, getStoredUser } from '../../../services/api';
 
 
 /**
  * Manages form state, validation, submission guard, and channel CRUD for
  * the CreateCommunity wizard, plus the standalone channel creation flow.
+ * The wizard fields are local form state; creating the community and adding a
+ * channel go through the Redux communities slice, so the new community shows on
+ * Discovery (and as joined) without another fetch.
  */
 export default function useCreateCommunity(navigate) {
   const [activeTab, setActiveTab] = useState('community');
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const dispatch = useDispatch();
+  const user = useSelector(selectCurrentUser);
+  const allCommunities = useSelector(selectCommunityList);
 
   // Form State - Community
   const [name, setName] = useState('');
@@ -40,7 +50,6 @@ export default function useCreateCommunity(navigate) {
   const [newChType, setNewChType] = useState('Text');
 
   // Form State - Standalone Channel Flow
-  const [allCommunities, setAllCommunities] = useState([]);
   const [channelCommId, setChannelCommId] = useState('');
   const [standaloneChName, setStandaloneChName] = useState('');
   const [standaloneChTopic, setStandaloneChTopic] = useState('');
@@ -49,15 +58,15 @@ export default function useCreateCommunity(navigate) {
   const showToast = (msg) => dispatch(toastShown({ msg }));
 
   useEffect(() => {
-    apiRequest('/communities')
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setAllCommunities(data);
-          setChannelCommId(String(data[0].id));
-        }
-      })
-      .catch(() => {});
-  }, []);
+    dispatch(fetchCommunityList());
+  }, [dispatch]);
+
+  // Pre-select the first community for the standalone channel form
+  useEffect(() => {
+    if (!channelCommId && allCommunities.length > 0) {
+      setChannelCommId(String(allCommunities[0].id));
+    }
+  }, [allCommunities, channelCommId]);
 
   const handleNameChange = (val) => {
     setName(val);
@@ -123,7 +132,6 @@ export default function useCreateCommunity(navigate) {
 
   const submitCreateCommunity = async () => {
     if (submitting) return;
-    const user = getStoredUser();
     if (!user || user.id === undefined || user.id === null) {
       showToast('⚠️ You must be logged in to create a community.');
       return;
@@ -152,26 +160,8 @@ export default function useCreateCommunity(navigate) {
     };
 
     try {
-      const created = await apiRequest('/communities', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      if (!created || !created.id) {
-        showToast('⚠️ Unexpected response from the server.');
-        return;
-      }
-
-      // Add to local joined communities
-      const id = String(created.id);
-      let joined = JSON.parse(localStorage.getItem('nexus_joined_communities') || '[]');
-      if (!joined.includes(id)) joined.push(id);
-      localStorage.setItem('nexus_joined_communities', JSON.stringify(joined));
-
-      let owned = JSON.parse(localStorage.getItem('nexus_owned_community_ids') || '[]');
-      if (!owned.includes(id)) owned.push(id);
-      localStorage.setItem('nexus_owned_community_ids', JSON.stringify(owned));
-
+      // The slice adds it to the list and to the joined ids
+      const created = await dispatch(createCommunity(payload)).unwrap();
       showToast('🎉 Community created! Redirecting…');
       setTimeout(() => { navigate(`/community-page?id=${created.id}`); }, 1000);
     } catch (err) {
@@ -187,19 +177,12 @@ export default function useCreateCommunity(navigate) {
     if (!channelCommId) { showToast('⚠️ Select a community first'); return; }
     showToast('💬 Creating channel…');
     try {
-      // Channels live on the community record — no dedicated /channels API.
-      const community = await apiRequest(`/communities/${channelCommId}`);
-      const existing = Array.isArray(community?.channels) ? community.channels : [];
-      const newChannel = {
-        id: String(Date.now()),
-        name: standaloneChName.trim().toLowerCase().replace(/\s+/g, '-'),
+      const { communityName, channel } = await dispatch(addChannel({
+        communityId: channelCommId,
+        name: standaloneChName,
         type: standaloneChType,
-      };
-      await apiRequest(`/communities/${channelCommId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ channels: [...existing, newChannel] }),
-      });
-      showToast(`✅ #${newChannel.name} created in ${community.name}!`);
+      })).unwrap();
+      showToast(`✅ #${channel.name} created in ${communityName}!`);
       setTimeout(() => { navigate(`/community-page?id=${channelCommId}`); }, 1000);
     } catch (err) {
       showToast(`⚠️ Could not reach the backend: ${err.message}`);
