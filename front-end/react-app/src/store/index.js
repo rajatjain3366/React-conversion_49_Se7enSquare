@@ -11,6 +11,9 @@ import auditLogReducer from './slices/auditLogSlice';
 import communitiesReducer from './slices/communitiesSlice';
 import eventsReducer from './slices/eventsSlice';
 import organizerReducer from './slices/organizerSlice';
+import modPanelReducer from './slices/modPanelSlice';
+import notificationsReducer from './slices/notificationsSlice';
+import ownerDashboardReducer from './slices/ownerDashboardSlice';
 import { listenerMiddleware } from './listenerMiddleware';
 
 /**
@@ -32,6 +35,9 @@ export const store = configureStore({
     communities: communitiesReducer,
     events: eventsReducer,
     organizer: organizerReducer,
+    modPanel: modPanelReducer,
+    notifications: notificationsReducer,
+    ownerDashboard: ownerDashboardReducer,
   },
   // The listener middleware goes first, as recommended by Redux Toolkit
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().prepend(listenerMiddleware.middleware),

@@ -5,7 +5,7 @@ import React from 'react';
  * Shows personalized greeting, unread notification count, upcoming events, and user-centric stats.
  * Stats reflect the current user's data (joined + created communities, notifications, events), not platform totals.
  */
-export default function GreetingBanner({ greeting, user, unreadCount, events = [], stats, communities, createdCommunities }) {
+export default function GreetingBanner({ greeting, user, unreadCount, events = [], communities, createdCommunities }) {
   // User-centric community count: joined + created (deduplicated by id)
   const allUserCommunities = [
     ...(communities || []),

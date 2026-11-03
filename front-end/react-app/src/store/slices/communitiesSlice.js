@@ -247,4 +247,14 @@ export const selectCommunityListError = (state) => state.communities.listError;
 export const selectJoinedIds = (state) => state.communities.joinedIds;
 export const selectCurrentCommunity = (state) => state.communities.current;
 
+// Dashboard: communities the user joined, and the ones they own
+export const selectJoinedCommunities = createSelector([selectAllCommunities, selectJoinedIds], (all, ids) => {
+  const joined = new Set(ids);
+  return all.filter((c) => joined.has(String(c.id)));
+});
+export const selectOwnedCommunities = createSelector(
+  [selectAllCommunities, (state) => state.auth.user?.id],
+  (all, userId) => (userId == null ? [] : all.filter((c) => String(c.ownerId) === String(userId)))
+);
+
 export default communitiesSlice.reducer;

@@ -1,7 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { dashboardService } from '../../../services/dashboardService';
-import { authService } from '../../../services/authService';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import {
+  fetchCommunityList,
+  fetchMyMemberships,
+  selectAllCommunities,
+  selectJoinedCommunities,
+  selectOwnedCommunities,
+  selectCommunityListLoading,
+} from '../../../store/slices/communitiesSlice';
+import { fetchEvents, selectApprovedEvents } from '../../../store/slices/eventsSlice';
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  selectRecentNotifications,
+  selectUnreadCount,
+} from '../../../store/slices/notificationsSlice';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -11,122 +26,60 @@ function getGreeting() {
 }
 
 /**
- * Custom hook managing Dashboard data fetching, notifications, and search state and business logic.
+ * Connects the Dashboard to Redux. Communities and events come from the shared
+ * communities and events slices (also used by Discovery and Events), notifications
+ * from the notifications slice. Only the search box is page-only state.
  */
 export default function useDashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(() => {
-    const u = authService.getCurrentUser();
-    return {
-      id: u?.id,
-      firstName: u?.firstName || u?.username || 'User',
-      lastName: u?.lastName || '',
-      username: u?.username || '',
-      role: u?.role || 'user',
-    };
-  });
+  const dispatch = useDispatch();
+  const sessionUser = useSelector(selectCurrentUser);
+  const user = useMemo(() => ({
+    id: sessionUser?.id,
+    firstName: sessionUser?.firstName || sessionUser?.username || 'User',
+    lastName: sessionUser?.lastName || '',
+    username: sessionUser?.username || '',
+    role: sessionUser?.role || 'user',
+  }), [sessionUser]);
 
-  const [communities, setCommunities] = useState([]);
-  const [createdCommunities, setCreatedCommunities] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [stats, setStats] = useState(null);
+  const allCommunities = useSelector(selectAllCommunities);
+  const communities = useSelector(selectJoinedCommunities).slice(0, 8);
+  const createdCommunities = useSelector(selectOwnedCommunities).slice(0, 8);
+  const loading = useSelector(selectCommunityListLoading);
+  const approvedEvents = useSelector(selectApprovedEvents);
+  const notifications = useSelector(selectRecentNotifications);
+  const unreadCount = useSelector(selectUnreadCount);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser || currentUser.id === undefined || currentUser.id === null) {
-        navigate('/login');
-        return;
-      }
-
-      setUser((prev) => {
-        if (prev.id === currentUser.id && prev.username === currentUser.username && prev.role === currentUser.role) {
-          return prev;
-        }
-        return {
-          id: currentUser.id,
-          firstName: currentUser.firstName || currentUser.username || 'User',
-          lastName: currentUser.lastName || '',
-          username: currentUser.username || 'user',
-          role: currentUser.role || 'user',
-        };
-      });
-
-      const currentId = currentUser.id;
-      const [joinedRes, createdRes, eventsRes, notifsRes, statsRes] = await Promise.allSettled([
-        dashboardService.getJoinedCommunities(currentId),
-        dashboardService.getCreatedCommunities(currentId),
-        dashboardService.getEvents(),
-        dashboardService.getNotifications(currentId),
-        dashboardService.getStats(),
-      ]);
-
-      if (joinedRes.status === 'fulfilled' && Array.isArray(joinedRes.value)) {
-        setCommunities(joinedRes.value.slice(0, 8));
-      } else {
-        setCommunities([]);
-      }
-
-      if (createdRes.status === 'fulfilled' && Array.isArray(createdRes.value)) {
-        setCreatedCommunities(createdRes.value.slice(0, 8));
-      } else {
-        setCreatedCommunities([]);
-      }
-
-      if (eventsRes.status === 'fulfilled' && Array.isArray(eventsRes.value)) {
-        setEvents(
-          eventsRes.value.slice(0, 4).map((e) => ({
-            id: e.id,
-            title: e.title,
-            community: e.community || 'Community',
-            date: e.date
-              ? new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-              : 'TBD',
-            time: e.time || '',
-            type: '📅',
-          }))
-        );
-      } else {
-        setEvents([]);
-      }
-
-      if (notifsRes.status === 'fulfilled' && Array.isArray(notifsRes.value)) {
-        setNotifications(
-          notifsRes.value.slice(0, 6).map((n) => ({
-            id: n.id,
-            icon: n.type === 'reaction' ? '💬' : n.type === 'report_status' ? '🛡️' : '🔔',
-            text: n.text,
-            time: n.createdAt
-              ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : 'Recently',
-            read: n.read,
-          }))
-        );
-      } else {
-        setNotifications([]);
-      }
-
-      if (statsRes.status === 'fulfilled' && statsRes.value) {
-        setStats(statsRes.value);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  const fetchData = useCallback(() => {
+    if (sessionUser?.id === undefined || sessionUser?.id === null) {
+      navigate('/login');
+      return;
     }
-  }, []);
+    dispatch(fetchCommunityList());
+    dispatch(fetchMyMemberships());
+    dispatch(fetchEvents());
+    dispatch(fetchNotifications());
+  }, [dispatch, navigate, sessionUser?.id]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Only approved events are public; the next 4 shaped for the Upcoming Events list
+  const events = useMemo(() => approvedEvents.slice(0, 4).map((e) => ({
+    id: e.id,
+    title: e.title,
+    community: allCommunities.find((c) => String(c.id) === String(e.communityId))?.name || 'Community',
+    date: e.date
+      ? new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'TBD',
+    time: e.time || '',
+    type: '📅',
+  })), [approvedEvents, allCommunities]);
 
   const handleSearch = (val) => {
     setSearchQuery(val);
@@ -149,10 +102,8 @@ export default function useDashboard() {
   };
 
   const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    dispatch(markAllNotificationsRead());
   };
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return {
     navigate,
@@ -162,7 +113,6 @@ export default function useDashboard() {
     createdCommunities,
     notifications,
     events,
-    stats,
     unreadCount,
     searchQuery,
     searchResults,
@@ -171,7 +121,6 @@ export default function useDashboard() {
     handleSearch,
     markAllRead,
     loading,
-    error,
     refresh: fetchData,
   };
 }

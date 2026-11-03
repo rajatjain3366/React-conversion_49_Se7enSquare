@@ -24,7 +24,6 @@ export default function Dashboard() {
     createdCommunities,
     notifications,
     events,
-    stats,
     unreadCount,
     searchQuery,
     searchResults,
@@ -56,7 +55,6 @@ export default function Dashboard() {
             user={user}
             unreadCount={unreadCount}
             events={events}
-            stats={stats}
             communities={communities}
             createdCommunities={createdCommunities}
           />
