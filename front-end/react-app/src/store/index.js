@@ -9,6 +9,8 @@ import adminCommunitiesReducer from './slices/adminCommunitiesSlice';
 import adminModerationReducer from './slices/adminModerationSlice';
 import auditLogReducer from './slices/auditLogSlice';
 import communitiesReducer from './slices/communitiesSlice';
+import eventsReducer from './slices/eventsSlice';
+import organizerReducer from './slices/organizerSlice';
 import { listenerMiddleware } from './listenerMiddleware';
 
 /**
@@ -28,6 +30,8 @@ export const store = configureStore({
     adminModeration: adminModerationReducer,
     auditLog: auditLogReducer,
     communities: communitiesReducer,
+    events: eventsReducer,
+    organizer: organizerReducer,
   },
   // The listener middleware goes first, as recommended by Redux Toolkit
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().prepend(listenerMiddleware.middleware),

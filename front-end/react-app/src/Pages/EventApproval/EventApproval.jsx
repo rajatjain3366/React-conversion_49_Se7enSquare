@@ -1,16 +1,22 @@
 // Page container component for the Event Approval Dashboard.
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import SideBar from '../../Components/SideBar';
 import '../../styles/global.css';
 import '../../styles/sidebar.css';
 import '../../styles/event-approval.css';
 
-import { eventService } from '../../Components/event-management/services/eventService';
 import { useToast } from '../../Components/event-management/hooks/useToast';
-import { useLocalStorageFallback } from '../../Components/event-management/hooks/useLocalStorageFallback';
 import { getCommunityName } from '../../Components/event-management/utils/getCommunityName';
-import { STORAGE_KEYS, EVENT_STATUSES } from '../../Components/event-management/utils/constants';
+import { EVENT_STATUSES } from '../../Components/event-management/utils/constants';
+import {
+  fetchEvents,
+  updateEventStatus,
+  selectEventsLoading,
+  selectEventsByStatus,
+} from '../../store/slices/eventsSlice';
+import { fetchCommunityList, selectAllCommunities } from '../../store/slices/communitiesSlice';
 
 import SummaryBar from './SummaryBar';
 import ApprovalList from './ApprovalList';
@@ -18,93 +24,44 @@ import EventDetailModal from './EventDetailModal';
 
 export default function EventApproval() {
   const navigate = useNavigate();
-  const [events, setEvents] = useState([]);
-  const [communities, setCommunities] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+  const loading = useSelector(selectEventsLoading);
+  const { pending: pendingList, approved: approvedList, rejected: rejectedList } = useSelector(selectEventsByStatus);
+  const communities = useSelector(selectAllCommunities);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const { showToast } = useToast();
-  const { getStoredItems, updateStoredItem } = useLocalStorageFallback(STORAGE_KEYS.EVENTS);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    let evList = [];
-    let commList = [];
-
-    try {
-      const [evRes, commRes] = await Promise.all([
-        eventService.getEvents().catch(() => []),
-        eventService.getCommunities().catch(() => []),
-      ]);
-      evList = evRes;
-      commList = commRes;
-    } catch {
-      // ignore network errors
-    }
-
-    if (!evList || evList.length === 0) {
-      const stored = getStoredItems();
-      if (stored.length > 0) evList = stored;
-    }
-
-    setEvents(Array.isArray(evList) ? evList : []);
-    setCommunities(Array.isArray(commList) ? commList : []);
-    setLoading(false);
-  }, [getStoredItems]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    dispatch(fetchEvents());
+    dispatch(fetchCommunityList());
+  }, [dispatch]);
 
-  const handleApprove = async (id) => {
+  // A backend refusal (e.g. "An approved event already exists ... at the selected
+  // date and time") is shown and nothing changes. If the backend cannot be reached,
+  // the slice keeps the local fallback and reports local: true.
+  const changeStatus = async (id, status, onlineMsg, offlineMsg) => {
     try {
-      await eventService.updateEvent(id, { status: EVENT_STATUSES.APPROVED });
-      showToast('✅ Event approved — all users will now see it.');
+      const { local } = await dispatch(updateEventStatus({ id, status })).unwrap();
+      showToast(local ? offlineMsg : onlineMsg);
     } catch (err) {
-      // err.status is set only when the backend answered (see eventService),
-      // e.g. "An approved event already exists ... at the selected date and
-      // time". Show that reason and leave the event unchanged.
-      if (err.status) {
-        showToast(`⚠️ ${err.message}`);
-        return;
-      }
-      // Backend unreachable: keep the existing local fallback.
-      updateStoredItem(id, { status: EVENT_STATUSES.APPROVED });
-      showToast('✅ Event approved (locally).');
+      showToast(`⚠️ ${err.message}`);
     }
-    setEvents((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, status: EVENT_STATUSES.APPROVED } : e))
-    );
   };
 
-  const handleReject = async (id) => {
-    try {
-      await eventService.updateEvent(id, { status: EVENT_STATUSES.REJECTED });
-      showToast('❌ Event rejected.');
-    } catch (err) {
-      // Same as approve: real server error -> show it, change nothing.
-      if (err.status) {
-        showToast(`⚠️ ${err.message}`);
-        return;
-      }
-      // Backend unreachable: keep the existing local fallback.
-      updateStoredItem(id, { status: EVENT_STATUSES.REJECTED });
-      showToast('❌ Event rejected (locally).');
-    }
-    setEvents((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, status: EVENT_STATUSES.REJECTED } : e))
-    );
-  };
+  const handleApprove = (id) => changeStatus(
+    id, EVENT_STATUSES.APPROVED, '✅ Event approved — all users will now see it.', '✅ Event approved (locally).'
+  );
+
+  const handleReject = (id) => changeStatus(
+    id, EVENT_STATUSES.REJECTED, '❌ Event rejected.', '❌ Event rejected (locally).'
+  );
 
   const openDetails = (ev) => {
     setSelectedEvent(ev);
     setModalOpen(true);
   };
-
-  const pendingList = events.filter((e) => e.status === EVENT_STATUSES.PENDING);
-  const approvedList = events.filter((e) => e.status === EVENT_STATUSES.APPROVED);
-  const rejectedList = events.filter((e) => e.status === EVENT_STATUSES.REJECTED);
 
   return (
     <div className="app-shell">

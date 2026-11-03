@@ -12,8 +12,8 @@ import {
   selectCommunityListError,
   selectJoinedIds,
 } from '../../../store/slices/communitiesSlice';
+import { fetchEvents, selectEvents, selectEventsLoaded } from '../../../store/slices/eventsSlice';
 import { memberCountOf, onlineCountOf } from '../data/discoveryData';
-import { apiRequest } from '../../../services/api';
 
 /**
  * Manages community listings, search/category filters, sorting, and
@@ -34,20 +34,18 @@ export default function useDiscovery() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('active');
   const [showSort, setShowSort] = useState(false);
-  const [eventCount, setEventCount] = useState(null);
+
+  // Event count for the stats bar comes from the shared events slice (null until loaded)
+  const events = useSelector(selectEvents);
+  const eventsLoaded = useSelector(selectEventsLoaded);
+  const eventCount = eventsLoaded ? events.length : null;
 
   const showToast = (msg) => dispatch(toastShown({ msg }));
 
   useEffect(() => {
     dispatch(fetchCommunityList());
     dispatch(fetchMyMemberships());
-
-    // Event count for the stats bar (non-critical)
-    let cancelled = false;
-    apiRequest('/events')
-      .then((events) => { if (!cancelled && Array.isArray(events)) setEventCount(events.length); })
-      .catch(() => { /* event count stays null */ });
-    return () => { cancelled = true; };
+    dispatch(fetchEvents());
   }, [dispatch]);
 
   const categories = useMemo(() => {

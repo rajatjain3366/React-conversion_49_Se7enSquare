@@ -1,98 +1,45 @@
-// Custom hook to manage user event registrations, confirmation tickets, and cancellations.
-import { useState, useEffect, useCallback } from 'react';
-import { eventService } from '../services/eventService';
-import { getCurrentUser } from '../utils/constants';
+// Custom hook for the user's event registrations, backed by the Redux events slice.
+import { useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchMyRegistrations,
+  registerForEvent as registerThunk,
+  cancelRegistration as cancelThunk,
+  selectMyRegistrations,
+  selectRegisteredEventIds,
+} from '../../../store/slices/eventsSlice';
 
 export function useRegistrations() {
-  const [myRegistrations, setMyRegistrations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+  const myRegistrations = useSelector(selectMyRegistrations);
+  const registeredIds = useSelector(selectRegisteredEventIds);
 
-  const loadRegistrations = useCallback(async () => {
-    setLoading(true);
-    const user = getCurrentUser();
-    if (!user || !user.id) {
-      setMyRegistrations([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      const data = await eventService.getRegistrations(user.id);
-      setMyRegistrations(Array.isArray(data) ? data : []);
-    } catch {
-      setMyRegistrations([]);
-    }
-    setLoading(false);
-  }, []);
+  const loadRegistrations = useCallback(() => dispatch(fetchMyRegistrations()), [dispatch]);
 
   useEffect(() => {
     loadRegistrations();
   }, [loadRegistrations]);
 
-  const isRegistered = useCallback((eventId) => {
-    return myRegistrations.some(
-      (r) => Number(r.eventId) === Number(eventId) || String(r.eventId) === String(eventId)
-    );
-  }, [myRegistrations]);
+  const isRegistered = useCallback((eventId) => registeredIds.has(String(eventId)), [registeredIds]);
 
+  // The slice also raises the event's attendee count
   const registerForEvent = useCallback(async (event, formData) => {
-    const user = getCurrentUser();
-    if (!user || !user.id) {
-      return { success: false, error: 'Please log in to register' };
-    }
-
-    const payload = {
-      eventId: Number(event.id),
-      userId: Number(user.id),
-      fullName: formData.fullName?.trim() || user.name || user.username,
-      contactEmail: (formData.email || formData.contactEmail || user.email || '').trim(),
-      phone: (formData.phone || '').trim(),
-      inGameId: (formData.inGameId || '').trim(),
-    };
-
     try {
-      const created = await eventService.registerForEvent(payload);
-      setMyRegistrations((prev) => [
-        ...prev,
-        { ...created, eventTitle: event.title },
-      ]);
-      return { success: true, registration: created };
+      const registration = await dispatch(registerThunk({ event, formData })).unwrap();
+      return { success: true, registration };
     } catch (err) {
-      return {
-        success: false,
-        error: err.message || 'Could not register. Please try again.',
-      };
+      return { success: false, error: err.message || 'Could not register. Please try again.' };
     }
-  }, []);
+  }, [dispatch]);
 
-  const cancelRegistration = useCallback(async (reg) => {
-    const regId = reg.id || reg.registrationId;
-
-    try {
-      if (regId) {
-        await eventService.cancelRegistration(regId);
-      }
-    } catch {
-      // ignore
-    }
-
-    setMyRegistrations((prev) =>
-      prev.filter((r) => {
-        const currentId = r.id || r.registrationId;
-        return (
-          Number(currentId) !== Number(regId) &&
-          String(currentId) !== String(regId) &&
-          Number(r.eventId) !== Number(reg.eventId)
-        );
-      })
-    );
-
+  // Pass the event; the slice finds the user's own registration for it
+  const cancelRegistration = useCallback(async (event) => {
+    await dispatch(cancelThunk(event));
     return { success: true };
-  }, []);
+  }, [dispatch]);
 
   return {
     myRegistrations,
-    setMyRegistrations,
-    loading,
     loadRegistrations,
     isRegistered,
     registerForEvent,

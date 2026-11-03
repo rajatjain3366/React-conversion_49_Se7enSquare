@@ -1,10 +1,11 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { apiRequest } from '../../services/api';
 import { logout } from './authSlice';
 
 /**
- * Communities slice, shared by Discovery, Community Page and Create Community:
- * - list: public communities (suspended ones hidden)
+ * Communities slice, shared by Discovery, Community Page, Create Community and the event pages:
+ * - all: every community (event pages need names even for suspended ones);
+ *   selectCommunityList derives the public list with suspended ones hidden
  * - joinedIds: communities the logged-in user belongs to; joining on one page
  *   shows on every other page immediately
  * - current: the community open on the Community Page, with its members and events
@@ -25,7 +26,7 @@ const isActive = (c) => (c.status || 'active').toLowerCase() !== 'suspended';
 
 export const fetchCommunityList = createAsyncThunk('communities/fetchList', async () => {
   const data = await apiRequest('/communities');
-  return Array.isArray(data) ? data.filter(isActive) : [];
+  return Array.isArray(data) ? data : [];
 });
 
 // The server's memberships are the source of truth for joinedIds
@@ -142,7 +143,7 @@ export const addChannel = createAsyncThunk('communities/addChannel', async ({ co
 const emptyCurrent = { community: null, loading: true, error: '', members: null, events: [] };
 
 const initialState = {
-  list: [],
+  all: [],
   listLoading: true,
   listError: '',
   joinedIds: readJoinedIds(),
@@ -164,12 +165,12 @@ const communitiesSlice = createSlice({
       })
       .addCase(fetchCommunityList.fulfilled, (state, action) => {
         state.listLoading = false;
-        state.list = action.payload;
+        state.all = action.payload;
         state.listError = '';
       })
       .addCase(fetchCommunityList.rejected, (state, action) => {
         state.listLoading = false;
-        state.list = [];
+        state.all = [];
         state.listError = action.error.message || 'Could not load communities.';
       })
       .addCase(fetchMyMemberships.fulfilled, (state, action) => {
@@ -222,11 +223,11 @@ const communitiesSlice = createSlice({
       // Create / delete
       .addCase(createCommunity.fulfilled, (state, action) => {
         const created = action.payload;
-        if (isActive(created)) state.list.push(created);
+        state.all.push(created);
         state.joinedIds = addId(state.joinedIds, String(created.id));
       })
       .addCase(deleteCommunity.fulfilled, (state, action) => {
-        state.list = state.list.filter((c) => String(c.id) !== action.payload);
+        state.all = state.all.filter((c) => String(c.id) !== action.payload);
         state.joinedIds = removeId(state.joinedIds, action.payload);
       })
 
@@ -238,7 +239,9 @@ const communitiesSlice = createSlice({
   },
 });
 
-export const selectCommunityList = (state) => state.communities.list;
+export const selectAllCommunities = (state) => state.communities.all;
+// Public list: suspended communities are hidden. Memoized, so the array is only rebuilt when `all` changes.
+export const selectCommunityList = createSelector([selectAllCommunities], (all) => all.filter(isActive));
 export const selectCommunityListLoading = (state) => state.communities.listLoading;
 export const selectCommunityListError = (state) => state.communities.listError;
 export const selectJoinedIds = (state) => state.communities.joinedIds;
