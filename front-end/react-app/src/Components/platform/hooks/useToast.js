@@ -1,17 +1,17 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useDispatch } from 'react-redux';
+import { toastShown } from '../../../store/slices/uiSlice';
 
 /**
- * Custom hook to control toast notification display with auto-dismiss.
+ * Shows a message in the app-wide toast (Redux ui slice, rendered by <GlobalToast />).
+ * Usage: const { showToast } = useToast(); showToast('✅', 'Saved');
  */
 export default function useToast() {
-  const [toast, setToast] = useState({ show: false, icon: '✅', msg: '' });
+  const dispatch = useDispatch();
 
   const showToast = useCallback((icon, msg) => {
-    setToast({ show: true, icon, msg });
-    setTimeout(() => {
-      setToast({ show: false, icon: '✅', msg: '' });
-    }, 2800);
-  }, []);
+    dispatch(toastShown({ icon, msg, duration: 2800 }));
+  }, [dispatch]);
 
-  return { toast, showToast };
+  return { showToast };
 }

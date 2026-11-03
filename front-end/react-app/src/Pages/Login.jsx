@@ -14,7 +14,6 @@ export default function Login() {
     currentTab,
     setCurrentTab,
     cardShake,
-    toast,
     // Login
     loginEmail,
     setLoginEmail,
@@ -644,12 +643,6 @@ export default function Login() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Toast Notification */}
-      <div className={`toast ${toast.show ? 'show' : ''}`} id="toast">
-        <span id="toastIcon">{toast.icon}</span>
-        <span id="toastMsg">{toast.msg}</span>
       </div>
     </div>
   );

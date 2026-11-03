@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { toastShown } from '../../../store/slices/uiSlice';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -93,12 +95,9 @@ export default function useCommunityPage(id, navigate) {
   const [memberSearch, setMemberSearch] = useState('');
   const [members, setMembers] = useState(null); // null = still loading
   const [events, setEvents] = useState([]);
-  const [toastMsg, setToastMsg] = useState(null);
+  const dispatch = useDispatch();
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg((cur) => (cur === msg ? null : cur)), 3000);
-  };
+  const showToast = (msg) => dispatch(toastShown({ msg }));
 
   const authHeaders = {
     'x-role': user.role,
@@ -292,7 +291,6 @@ export default function useCommunityPage(id, navigate) {
     joined, toggleJoin,
     memberSearch, setMemberSearch,
     members, events,
-    toastMsg,
     isOwner,
     channelEntries, foundedLabel, rules, filteredMembers,
     showToast,

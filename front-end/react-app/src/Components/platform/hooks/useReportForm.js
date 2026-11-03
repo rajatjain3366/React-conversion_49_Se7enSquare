@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { toastShown } from '../../../store/slices/uiSlice';
 import { apiRequest, getStoredUser } from '../../../services/api';
 
 /**
@@ -41,13 +43,10 @@ export default function useReportForm() {
 
   const [userSearch, setUserSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [toast, setToast] = useState({ show: false, msg: '' });
   const [submitting, setSubmitting] = useState(false);
+  const dispatch = useDispatch();
 
-  const showToast = (msg) => {
-    setToast({ show: true, msg });
-    setTimeout(() => setToast({ show: false, msg: '' }), 3000);
-  };
+  const showToast = (msg) => dispatch(toastShown({ msg }));
 
   const handleUserSearch = async (val) => {
     setUserSearch(val);
@@ -131,7 +130,6 @@ export default function useReportForm() {
     selectedTarget,
     setSelectedTarget,
     searchResults,
-    toast,
     submitting,
     handleUserSearch,
     submitReport,

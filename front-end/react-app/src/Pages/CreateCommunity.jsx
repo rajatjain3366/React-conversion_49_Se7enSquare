@@ -210,12 +210,6 @@ export default function CreateCommunity() {
           onNext={hook.nextStep}
           onCreateChannel={hook.submitCreateChannel}
         />
-
-        {hook.toastMsg && (
-          <div className="toast show" style={{ display: 'flex' }}>
-            <span>{hook.toastMsg}</span>
-          </div>
-        )}
       </div>
     </div>
   );

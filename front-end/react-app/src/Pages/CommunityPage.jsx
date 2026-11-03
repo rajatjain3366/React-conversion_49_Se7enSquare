@@ -28,7 +28,7 @@ export default function CommunityPage() {
     joined, toggleJoin,
     memberSearch, setMemberSearch,
     members, events,
-    toastMsg, showToast,
+    showToast,
     isOwner,
     channelEntries, foundedLabel, rules, filteredMembers,
     handleDelete,
@@ -128,17 +128,6 @@ export default function CommunityPage() {
       )}
       {activeTab === 'rules' && (
         <CommunityRulesWidget community={community} rules={rules} />
-      )}
-
-      {toastMsg && (
-        <div style={{
-          position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-          background: '#1c2333', color: '#fff', border: '1px solid rgba(99,102,241,0.4)',
-          borderRadius: '10px', padding: '10px 18px', fontSize: '13.5px', zIndex: 2000,
-          boxShadow: '0 8px 30px rgba(0,0,0,0.45)', maxWidth: '80vw',
-        }}>
-          {toastMsg}
-        </div>
       )}
     </div>
   );

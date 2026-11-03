@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectCurrentUser, logout } from '../store/slices/authSlice';
+import { selectSidebarCollapsed, sidebarToggled } from '../store/slices/uiSlice';
 import { getHomeRoute } from '../services/roleAccess';
 import '../styles/sidebar.css';
 
@@ -102,18 +103,12 @@ export default function SideBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem('nexus_sidebar_collapsed') === 'true'
-  );
+  const collapsed = useSelector(selectSidebarCollapsed);
   // Re-renders automatically when login, logout or a profile update changes the store
   const sessionUser = useSelector(selectCurrentUser);
   const user = useMemo(() => toSidebarUser(sessionUser), [sessionUser]);
 
-  const toggleCollapse = () => {
-    const next = !collapsed;
-    setCollapsed(next);
-    localStorage.setItem('nexus_sidebar_collapsed', String(next));
-  };
+  const toggleCollapse = () => dispatch(sidebarToggled());
 
   const role = user.role;
   const meta = ROLE_META[role] || ROLE_META.user;

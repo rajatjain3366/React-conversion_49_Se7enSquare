@@ -1,6 +1,5 @@
 import React from 'react';
 import useCommunitySettings from '../Components/platform/hooks/useCommunitySettings';
-import Toast from '../Components/platform/common/Toast';
 import CommunityHeader from './CommunitySettings/components/CommunityHeader';
 import SettingsNav from './CommunitySettings/components/SettingsNav';
 import BasicInfoTab from './CommunitySettings/components/BasicInfoTab';
@@ -32,7 +31,6 @@ export default function CommunitySettings() {
     setNewChName,
     newChType,
     setNewChType,
-    toastMsg,
     handleFieldChange,
     handleMemberRoleChange,
     handleRemoveMember,
@@ -125,9 +123,6 @@ export default function CommunitySettings() {
         setChannelType={setNewChType}
         onCreateChannel={handleCreateChannel}
       />
-
-      {/* Toast Notification */}
-      <Toast toast={{ show: !!toastMsg, msg: toastMsg }} />
     </div>
   );
 }

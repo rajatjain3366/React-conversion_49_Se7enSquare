@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppShell from '../Components/platform/layout/AppShell';
-import Toast from '../Components/platform/common/Toast';
 import useToast from '../Components/platform/hooks/useToast';
 import useAdminUsers from './AdminDashboard/hooks/useAdminUsers';
 import useAdminCommunities from './AdminDashboard/hooks/useAdminCommunities';
@@ -62,7 +61,7 @@ export default function AdminDashboard() {
     setSearchParams({ tab: pageId });
   }, [setSearchParams]);
 
-  const { toast, showToast } = useToast();
+  const { showToast } = useToast();
   const notify = useCallback((msg) => showToast('ℹ️', msg), [showToast]);
 
   // Declared before the action hooks so each successful action can write an audit entry
@@ -211,8 +210,6 @@ export default function AdminDashboard() {
 
         {activePage === 'audit' && <AuditLogTab auditLog={auditLog} />}
       </div>
-
-      <Toast toast={toast} />
     </AppShell>
   );
 }

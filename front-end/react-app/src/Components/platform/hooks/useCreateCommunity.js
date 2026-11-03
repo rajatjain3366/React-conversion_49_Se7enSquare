@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { toastShown } from '../../../store/slices/uiSlice';
 import {
   URL_PATTERN, CATEGORIES, ICONS, BANNERS, DEFAULT_CHANNELS, DEFAULT_PERMISSIONS,
 } from '../data/createCommunityOptions';
@@ -13,8 +15,8 @@ import { apiRequest, getStoredUser } from '../../../services/api';
 export default function useCreateCommunity(navigate) {
   const [activeTab, setActiveTab] = useState('community');
   const [currentStep, setCurrentStep] = useState(1);
-  const [toastMsg, setToastMsg] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const dispatch = useDispatch();
 
   // Form State - Community
   const [name, setName] = useState('');
@@ -44,10 +46,7 @@ export default function useCreateCommunity(navigate) {
   const [standaloneChTopic, setStandaloneChTopic] = useState('');
   const [standaloneChType, setStandaloneChType] = useState('Text');
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
-  };
+  const showToast = (msg) => dispatch(toastShown({ msg }));
 
   useEffect(() => {
     apiRequest('/communities')
@@ -211,7 +210,7 @@ export default function useCreateCommunity(navigate) {
     // Tab + step
     activeTab, setActiveTab,
     currentStep, setCurrentStep,
-    toastMsg, submitting,
+    submitting,
     // Community form fields
     name, desc, slug, category, icon, banner, website, tags,
     channels, privacy, permissions, rules, welcomeMsg,

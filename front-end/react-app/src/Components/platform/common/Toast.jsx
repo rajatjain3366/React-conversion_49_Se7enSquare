@@ -7,7 +7,7 @@ export default function Toast({ toast }) {
   if (!toast) return null;
   return (
     <div className={`toast ${toast.show ? 'show' : ''}`} id="toast">
-      <span id="toastIcon">{toast.icon}</span>
+      {toast.icon && <span id="toastIcon">{toast.icon}</span>}
       <span id="toastMsg">{toast.msg}</span>
     </div>
   );

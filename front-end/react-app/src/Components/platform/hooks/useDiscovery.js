@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useDispatch } from 'react-redux';
+import { toastShown } from '../../../store/slices/uiSlice';
 import { memberCountOf, onlineCountOf } from '../data/discoveryData';
 
 import { apiRequest, getStoredUser } from '../../../services/api';
@@ -32,12 +34,9 @@ export default function useDiscovery() {
   const [loading, setLoading] = useState(true);
   const [loadWarning, setLoadWarning] = useState('');
   const [eventCount, setEventCount] = useState(null);
-  const [toastMsg, setToastMsg] = useState(null);
+  const dispatch = useDispatch();
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg((cur) => (cur === msg ? null : cur)), 3000);
-  };
+  const showToast = (msg) => dispatch(toastShown({ msg }));
 
   useEffect(() => {
     let cancelled = false;
@@ -185,6 +184,5 @@ export default function useDiscovery() {
     joinedIds, toggleJoin,
     categories, filtered,
     totalMembers, totalOnline, eventCount,
-    toastMsg,
   };
 }

@@ -8,7 +8,6 @@ import '../../styles/admin-dashboard.css';
 
 import { getCommunityName } from '../../Components/event-management/utils/getCommunityName';
 import PageHeader from '../../Components/event-management/common/PageHeader';
-import Toast from '../../Components/event-management/common/Toast';
 
 import PlanCard from './PlanCard';
 import StatsGrid from './StatsGrid';
@@ -44,7 +43,6 @@ export default function OrganizerDashboard() {
     totalRegistrations,
     filteredEvents,
     isPremium,
-    toastMsg,
     currentUser,
   } = useOrganizerData();
 
@@ -133,7 +131,6 @@ export default function OrganizerDashboard() {
         onSubmit={handleModalSubmit}
       />
 
-      <Toast message={toastMsg} />
     </div>
   );
 }

@@ -53,10 +53,6 @@ export default function ModPanel() {
             recentActions={m.recentActions}
           />
         </div>
-
-        <div className={`mp-toast${m.toast.show ? ' show' : ''}`} id="toast">
-          <span>{m.toast.msg}</span>
-        </div>
       </div>
     </div>
   );

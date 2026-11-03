@@ -1,6 +1,5 @@
 import React from 'react';
 import AppShell from '../Components/platform/layout/AppShell';
-import Toast from '../Components/platform/common/Toast';
 import usePricing from '../Components/platform/hooks/usePricing';
 import PricingHeader from './Pricing/components/PricingHeader';
 import PlanGrid from './Pricing/components/PlanGrid';
@@ -19,7 +18,6 @@ export default function Pricing() {
     isLoading,
     isSubmitting,
     isOwner,
-    toast,
     handlePlanChange,
     handleCancelSubscription,
   } = usePricing();
@@ -70,8 +68,6 @@ export default function Pricing() {
           user={user}
         />
       </div>
-
-      <Toast toast={toast} />
     </AppShell>
   );
 }

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { toastShown } from '../../../store/slices/uiSlice';
 import { DEFAULT_COMMUNITY } from '../data/defaultCommunityData';
 import useDirtyForm from './useDirtyForm';
 
@@ -24,7 +26,7 @@ export default function useCommunitySettings() {
   const [activeTab, setActiveTab] = useState('basic');
   const [loading, setLoading] = useState(true);
   const { isDirty, setIsDirty, markDirty, markClean } = useDirtyForm(false);
-  const [toastMsg, setToastMsg] = useState(null);
+  const dispatch = useDispatch();
 
   // Community state with snapshot for discard
   const [community, setCommunity] = useState(DEFAULT_COMMUNITY);
@@ -35,10 +37,7 @@ export default function useCommunitySettings() {
   const [newChName, setNewChName] = useState('');
   const [newChType, setNewChType] = useState('Text');
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
-  };
+  const showToast = (msg) => dispatch(toastShown({ msg }));
 
   useEffect(() => {
     async function loadCommunity() {
@@ -282,7 +281,6 @@ export default function useCommunitySettings() {
     setNewChName,
     newChType,
     setNewChType,
-    toastMsg,
     handleFieldChange,
     handleMemberRoleChange,
     handleRemoveMember,

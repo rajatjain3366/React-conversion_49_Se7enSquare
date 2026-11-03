@@ -39,7 +39,7 @@ export function useOrganizerData() {
     status: EVENT_STATUSES.PENDING,
   });
 
-  const { toastMsg, showToast } = useToast();
+  const { showToast } = useToast();
   const { getStoredItems, addStoredItem, updateStoredItem, removeStoredItem } =
     useLocalStorageFallback(STORAGE_KEYS.EVENTS);
 
@@ -365,6 +365,5 @@ export function useOrganizerData() {
     totalRegistrations,
     filteredEvents,
     isPremium,
-    toastMsg,
   };
 }

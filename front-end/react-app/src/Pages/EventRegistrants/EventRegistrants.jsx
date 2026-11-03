@@ -11,7 +11,6 @@ import { useToast } from '../../Components/event-management/hooks/useToast';
 import { STORAGE_KEYS } from '../../Components/event-management/utils/constants';
 import PageHeader from '../../Components/event-management/common/PageHeader';
 import EmptyState from '../../Components/event-management/common/EmptyState';
-import Toast from '../../Components/event-management/common/Toast';
 import RegistrantsTable from './RegistrantsTable';
 
 export default function EventRegistrants() {
@@ -23,7 +22,7 @@ export default function EventRegistrants() {
   const [registrants, setRegistrants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
-  const { toastMsg, showToast } = useToast();
+  const { showToast } = useToast();
 
   useEffect(() => {
     async function loadRegistrants() {
@@ -137,8 +136,7 @@ export default function EventRegistrants() {
           </div>
         )}
 
-        <Toast message={toastMsg} />
-      </div>
+        </div>
     </div>
   );
 }

@@ -15,7 +15,6 @@ import { getCommunityObject } from '../../Components/event-management/utils/getC
 import { eventService } from '../../Components/event-management/services/eventService';
 
 import PageHeader from '../../Components/event-management/common/PageHeader';
-import Toast from '../../Components/event-management/common/Toast';
 
 import CategoryFilterChips from './CategoryFilterChips';
 import FeaturedEventBanner from './FeaturedEventBanner';
@@ -29,7 +28,7 @@ export default function Events() {
   const [registerEvent, setRegisterEvent] = useState(null);
   const [communities, setCommunities] = useState([]);
 
-  const { toastMsg, showToast } = useToast();
+  const { showToast } = useToast();
   const {
     loading: eventsLoading,
     selectedCategory,
@@ -143,8 +142,7 @@ export default function Events() {
           onSubmit={handleConfirmRegistration}
         />
 
-        <Toast message={toastMsg} />
-      </div>
+        </div>
     </div>
   );
 }

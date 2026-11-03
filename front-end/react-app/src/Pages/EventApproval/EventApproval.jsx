@@ -12,7 +12,6 @@ import { useLocalStorageFallback } from '../../Components/event-management/hooks
 import { getCommunityName } from '../../Components/event-management/utils/getCommunityName';
 import { STORAGE_KEYS, EVENT_STATUSES } from '../../Components/event-management/utils/constants';
 
-import Toast from '../../Components/event-management/common/Toast';
 import SummaryBar from './SummaryBar';
 import ApprovalList from './ApprovalList';
 import EventDetailModal from './EventDetailModal';
@@ -25,7 +24,7 @@ export default function EventApproval() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const { toastMsg, showToast } = useToast();
+  const { showToast } = useToast();
   const { getStoredItems, updateStoredItem } = useLocalStorageFallback(STORAGE_KEYS.EVENTS);
 
   const loadData = useCallback(async () => {
@@ -168,7 +167,6 @@ export default function EventApproval() {
         communityName={selectedEvent ? getCommunityName(selectedEvent.communityId, communities) : ''}
       />
 
-      <Toast message={toastMsg} />
     </div>
   );
 }

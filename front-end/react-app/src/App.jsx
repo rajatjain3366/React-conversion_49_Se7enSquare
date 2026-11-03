@@ -28,6 +28,7 @@ import OwnerDashboard from './Pages/OwnerDashboard';
 import ProfileSettings from './Pages/ProfileSettings';
 import User from './Pages/User';
 import { getHomeRoute } from './services/roleAccess';
+import GlobalToast from './Components/platform/common/GlobalToast';
 
 // Protected Route wrapper with role-based access control.
 // Reads the user from the Redux store, so logging in or out re-renders it.
@@ -61,6 +62,7 @@ function ProtectedRoute({ children, allowedRoles, allowOwner = false }) {
 
 export default function App() {
   return (
+    <>
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<Index />} />
@@ -153,5 +155,9 @@ export default function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+
+    {/* One toast for every page, driven by the Redux ui slice */}
+    <GlobalToast />
+    </>
   );
 }

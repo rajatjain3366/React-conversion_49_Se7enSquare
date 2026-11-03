@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { toastShown } from '../../../store/slices/uiSlice';
 import { QUEUE_TABS, MOD_ACTIONS } from '../../../Components/platform/data/modPanelData';
 import { moderationService } from '../../../services/moderationService';
 import { authService } from '../../../services/authService';
@@ -25,14 +27,11 @@ export default function useModPanel() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [queueSearch, setQueueSearch] = useState('');
   const [actionNote, setActionNote] = useState('');
-  const [toast, setToast] = useState({ show: false, msg: '' });
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const dispatch = useDispatch();
 
-  const showToast = (msg) => {
-    setToast({ show: true, msg });
-    setTimeout(() => setToast({ show: false, msg: '' }), 3000);
-  };
+  const showToast = (msg) => dispatch(toastShown({ msg }));
 
   // Fetch reports from backend on mount
   useEffect(() => {
@@ -229,7 +228,6 @@ export default function useModPanel() {
     moveToReview,
     processing,
     // Toast
-    toast,
     // Derived
     recentActions,
     MOD_ACTIONS,

@@ -13,7 +13,7 @@ export default function usePricing() {
   const [currentPlan, setCurrentPlan] = useState('free');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast, showToast } = useToast();
+  const { showToast } = useToast();
 
   const isOwner = user?.role === 'owner';
 
@@ -132,7 +132,6 @@ export default function usePricing() {
     isLoading,
     isSubmitting,
     isOwner,
-    toast,
     handlePlanChange,
     handleCancelSubscription,
     refetchStatus: fetchStatus,

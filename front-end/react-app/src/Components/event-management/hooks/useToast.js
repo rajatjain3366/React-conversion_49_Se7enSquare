@@ -1,24 +1,14 @@
-// Custom hook to manage toast notification messages with automatic timeout dismissal.
-import { useState, useCallback, useRef, useEffect } from 'react';
+// Custom hook to show a toast message through the app-wide Redux toast (auto-dismissed by the store).
+import { useCallback } from 'react';
+import { useDispatch } from 'react-redux';
+import { toastShown } from '../../../store/slices/uiSlice';
 
 export function useToast(defaultDuration = 3000) {
-  const [toastMsg, setToastMsg] = useState(null);
-  const timerRef = useRef(null);
+  const dispatch = useDispatch();
 
   const showToast = useCallback((msg, duration = defaultDuration) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setToastMsg(msg);
-    timerRef.current = setTimeout(() => {
-      setToastMsg(null);
-      timerRef.current = null;
-    }, duration);
-  }, [defaultDuration]);
+    dispatch(toastShown({ msg, duration }));
+  }, [dispatch, defaultDuration]);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  return { toastMsg, showToast };
+  return { showToast };
 }
