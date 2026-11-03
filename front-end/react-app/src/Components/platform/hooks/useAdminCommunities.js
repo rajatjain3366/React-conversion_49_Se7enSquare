@@ -1,68 +1,53 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { apiRequest } from '../../../services/api';
+import { useCallback, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchCommunities,
+  suspendCommunity as suspendCommunityThunk,
+  reinstateCommunity as reinstateCommunityThunk,
+  selectAdminCommunities,
+} from '../../../store/slices/adminCommunitiesSlice';
 
 /**
- * Manages community list fetch and admin suspend/reinstate actions.
- * POST /admin/communities/:id/suspend|reinstate from AdminCommunitiesController.
- * Each successful action is reported to onAudit.
+ * Custom hook connecting the Communities tab to the Redux adminCommunities slice.
+ * Adds the reason prompt / confirmation and the toasts around the thunks.
  */
-export default function useAdminCommunities(showToast, onAudit) {
-  const [communities, setCommunities] = useState([]);
-  const showToastRef = useRef(showToast);
-  const onAuditRef = useRef(onAudit);
-  useEffect(() => {
-    showToastRef.current = showToast;
-    onAuditRef.current = onAudit;
-  }, [showToast, onAudit]);
+export default function useAdminCommunities(showToast) {
+  const dispatch = useDispatch();
+  const communities = useSelector(selectAdminCommunities);
 
-  const refreshCommunities = useCallback(async () => {
-    try {
-      const data = await apiRequest('/communities');
-      setCommunities(Array.isArray(data) ? data : []);
-    } catch { /* leave current list */ }
-  }, []);
+  const refreshCommunities = useCallback(() => dispatch(fetchCommunities()), [dispatch]);
 
   // Initial load once on mount
   useEffect(() => {
     refreshCommunities();
   }, [refreshCommunities]);
 
-  const suspendCommunity = useCallback(async (communityId, reason) => {
-    const community = communities.find((c) => c.id === communityId);
-    const r = reason || window.prompt(`Reason for suspending "${community?.name || `community #${communityId}`}":`);
+  const nameOf = (communityId) =>
+    communities.find((c) => c.id === communityId)?.name || `community #${communityId}`;
+
+  const suspendCommunity = async (communityId, reason) => {
+    const r = reason || window.prompt(`Reason for suspending "${nameOf(communityId)}":`);
     if (!r?.trim()) return;
     try {
-      await apiRequest(`/admin/communities/${communityId}/suspend`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: r.trim() }),
-      });
-      showToastRef.current?.(`⚠️ Community suspended`);
-      onAuditRef.current?.('Community Suspended', community?.name || `community #${communityId}`, r.trim());
-      await refreshCommunities();
+      await dispatch(suspendCommunityThunk({ communityId, reason: r.trim() })).unwrap();
+      showToast('⚠️ Community suspended');
     } catch (err) {
-      showToastRef.current?.(`❌ ${err.message}`);
+      showToast(`❌ ${err.message}`);
     }
-  }, [communities, refreshCommunities]);
+  };
 
-  const reinstateCommunity = useCallback(async (communityId) => {
-    const community = communities.find((c) => c.id === communityId);
-    if (!window.confirm(`Reinstate "${community?.name || `community #${communityId}`}"?`)) return;
+  const reinstateCommunity = async (communityId) => {
+    if (!window.confirm(`Reinstate "${nameOf(communityId)}"?`)) return;
     try {
-      await apiRequest(`/admin/communities/${communityId}/reinstate`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: 'Reinstated by admin' }),
-      });
-      showToastRef.current?.('✓ Community reinstated');
-      onAuditRef.current?.('Community Reinstated', community?.name || `community #${communityId}`, 'Reinstated by admin');
-      await refreshCommunities();
+      await dispatch(reinstateCommunityThunk(communityId)).unwrap();
+      showToast('✓ Community reinstated');
     } catch (err) {
-      showToastRef.current?.(`❌ ${err.message}`);
+      showToast(`❌ ${err.message}`);
     }
-  }, [communities, refreshCommunities]);
+  };
 
   return {
     communities,
-    setCommunities,
     refreshCommunities,
     suspendCommunity,
     reinstateCommunity,

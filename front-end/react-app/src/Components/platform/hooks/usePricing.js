@@ -1,47 +1,54 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { PLANS, PLAN_RANK } from '../data/pricingPlans';
-import { getStoredUser, apiRequest } from '../../../services/api';
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import {
+  fetchSubscriptionStatus,
+  changePlan,
+  cancelSubscription,
+  statusSkipped,
+  selectCurrentPlan,
+  selectPricingLoading,
+  selectPricingSubmitting,
+} from '../../../store/slices/pricingSlice';
 import useToast from './useToast';
 
 /**
- * Custom hook managing all Pricing page state, RBAC, and network actions.
+ * Custom hook connecting the Pricing page to the Redux pricing slice.
+ * The plan and loading flags live in the store; this hook keeps the page rules
+ * (login required, owners excluded, confirm before downgrade/cancel) and toasts.
  */
 export default function usePricing() {
   const navigate = useNavigate();
-  const [user] = useState(() => getStoredUser());
-  const [currentPlan, setCurrentPlan] = useState('free');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dispatch = useDispatch();
+  const user = useSelector(selectCurrentUser);
+  const currentPlan = useSelector(selectCurrentPlan);
+  const isLoading = useSelector(selectPricingLoading);
+  const isSubmitting = useSelector(selectPricingSubmitting);
   const { showToast } = useToast();
 
+  const userId = user?.id;
   const isOwner = user?.role === 'owner';
 
   const fetchStatus = useCallback(async () => {
-    if (!user || !user.id || isOwner) {
-      setIsLoading(false);
+    if (!userId || isOwner) {
+      dispatch(statusSkipped());
       return;
     }
-
     try {
-      setIsLoading(true);
-      const data = await apiRequest(`/subscriptions/status?userId=${user.id}`);
-      if (data && data.plan) {
-        setCurrentPlan(data.plan);
-      }
+      await dispatch(fetchSubscriptionStatus(userId)).unwrap();
     } catch (err) {
       showToast('❌', err.message || 'Failed to load subscription status');
-    } finally {
-      setIsLoading(false);
     }
-  }, [user, isOwner, showToast]);
+  }, [dispatch, userId, isOwner, showToast]);
 
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
 
   const handlePlanChange = async (planId) => {
-    if (!user || !user.id) {
+    if (!userId) {
       showToast('⚠️', 'Please log in to manage your subscription.');
       navigate('/login');
       return;
@@ -69,27 +76,17 @@ export default function usePricing() {
       if (!confirmed) return;
     }
 
-    setIsSubmitting(true);
     try {
-      const res = await apiRequest('/subscriptions/upgrade', {
-        method: 'POST',
-        body: JSON.stringify({ userId: Number(user.id), plan: planId }),
-      });
-
-      if (res && res.plan) {
-        setCurrentPlan(res.plan);
-      }
+      await dispatch(changePlan({ userId, plan: planId })).unwrap();
       showToast('✅', `Now on the ${targetPlan.name} plan`);
       await fetchStatus();
     } catch (err) {
       showToast('❌', err.message || 'Failed to update subscription');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const handleCancelSubscription = async () => {
-    if (!user || !user.id) {
+    if (!userId) {
       showToast('⚠️', 'Please log in to manage your subscription.');
       navigate('/login');
       return;
@@ -110,19 +107,12 @@ export default function usePricing() {
     );
     if (!confirmed) return;
 
-    setIsSubmitting(true);
     try {
-      const res = await apiRequest('/subscriptions/cancel', {
-        method: 'POST',
-        body: JSON.stringify({ userId: Number(user.id) }),
-      });
-      setCurrentPlan('free');
-      showToast('✅', res?.message || 'Subscription cancelled — Reverted to the Free plan');
+      const message = await dispatch(cancelSubscription(userId)).unwrap();
+      showToast('✅', message || 'Subscription cancelled — Reverted to the Free plan');
       await fetchStatus();
     } catch (err) {
       showToast('❌', err.message || 'Failed to cancel subscription');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -137,4 +127,3 @@ export default function usePricing() {
     refetchStatus: fetchStatus,
   };
 }
-

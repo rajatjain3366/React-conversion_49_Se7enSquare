@@ -1,139 +1,103 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { toastShown } from '../../../store/slices/uiSlice';
-import { apiRequest, getStoredUser } from '../../../services/api';
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import {
+  searchUsers,
+  submitReport as submitReportThunk,
+  reportStarted,
+  reportReset,
+  stepChanged,
+  targetSelected,
+  reasonSelected,
+  contextChanged,
+  confirmedChanged,
+  userSearchChanged,
+  selectReport,
+} from '../../../store/slices/reportSlice';
 
 /**
- * Custom hook managing the 4-step report state, search params, API submissions, and form resets.
+ * Custom hook connecting the 4-step Report page to the Redux report slice.
+ * Returns the same values as before, so the step components are unchanged.
  */
 export default function useReportForm() {
-  const [currentUser] = useState(() => {
-    try {
-      const u = getStoredUser() || {};
-      return {
-        firstName: u.firstName || u.name?.split(' ')[0] || u.username || 'User',
-      };
-    } catch {
-      return { firstName: 'User' };
-    }
-  });
-
-  const [searchParams] = useSearchParams();
-  const user = getStoredUser() || { id: 4, role: 'user' };
-
-  const ctxUser = searchParams.get('user');
-  const ctxUserName = searchParams.get('uname') ? decodeURIComponent(searchParams.get('uname')) : null;
-  const ctxMsg = searchParams.get('msg');
-  const ctxMsgText = searchParams.get('text') ? decodeURIComponent(searchParams.get('text')) : null;
-
-  const [step, setStep] = useState(1);
-  const [selectedReason, setSelectedReason] = useState('');
-  const [additionalContext, setAdditionalContext] = useState('');
-  const [confirmed, setConfirmed] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [refId, setRefId] = useState('');
-
-  // Target selection state
-  const [selectedTarget, setSelectedTarget] = useState(() => {
-    if (ctxUser) return { type: 'user', id: ctxUser, name: ctxUserName || `User #${ctxUser}` };
-    if (ctxMsg) return { type: 'message', id: ctxMsg, text: ctxMsgText, author: ctxUserName || null };
-    return null;
-  });
-
-  const [userSearch, setUserSearch] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
   const dispatch = useDispatch();
+  const sessionUser = useSelector(selectCurrentUser);
+  const report = useSelector(selectReport);
+  const [searchParams] = useSearchParams();
+
+  const currentUser = {
+    firstName: sessionUser?.firstName || sessionUser?.name?.split(' ')[0] || sessionUser?.username || 'User',
+  };
 
   const showToast = (msg) => dispatch(toastShown({ msg }));
 
-  const handleUserSearch = async (val) => {
-    setUserSearch(val);
-    if (!val.trim()) {
-      setSearchResults([]);
-      return;
+  // Links from other pages pre-fill the target: /report?user=7&uname=... or /report?msg=55&text=...
+  const ctxUser = searchParams.get('user');
+  const ctxMsg = searchParams.get('msg');
+  const ctxUserName = searchParams.get('uname');
+  const ctxMsgText = searchParams.get('text');
+
+  useEffect(() => {
+    if (ctxUser) {
+      dispatch(reportStarted({ type: 'user', id: ctxUser, name: ctxUserName || `User #${ctxUser}` }));
+    } else if (ctxMsg) {
+      dispatch(reportStarted({ type: 'message', id: ctxMsg, text: ctxMsgText, author: ctxUserName || null }));
     }
-    try {
-      const data = await apiRequest(`/users?search=${encodeURIComponent(val)}`);
-      setSearchResults(Array.isArray(data) ? data.slice(0, 6) : []);
-    } catch {
-      setSearchResults([]);
-    }
+  }, [dispatch, ctxUser, ctxMsg, ctxUserName, ctxMsgText]);
+
+  // A finished report should not greet the user again next time they open the page
+  useEffect(() => () => {
+    if (report.submitted) dispatch(reportReset());
+  }, [dispatch, report.submitted]);
+
+  const handleUserSearch = (val) => {
+    dispatch(userSearchChanged(val));
+    if (val.trim()) dispatch(searchUsers(val));
   };
 
   const submitReport = async () => {
-    if (!selectedReason || !confirmed) return;
-    setSubmitting(true);
-    const reasonText = (selectedReason + (additionalContext ? `: ${additionalContext}` : '')).slice(0, 195);
-    const reportData = {
-      reporterId: Number(user.id || 4),
-      targetType: selectedTarget?.type === 'post' ? 'post' : 'user',
-      targetId: Number(selectedTarget?.id || 1),
-      reason: reasonText.length >= 8 ? reasonText : `${reasonText} - reported by user`,
-    };
-    // Only show the success step (with the real report ID) when the backend
-    // actually saved the report. Before, a failed request still showed a
-    // made-up "RPT-<timestamp>" reference, so users thought it was sent.
+    if (!report.selectedReason || !report.confirmed || !report.selectedTarget) return;
     try {
-      const data = await apiRequest('/reports', {
-        method: 'POST',
-        body: JSON.stringify(reportData),
-      });
-      setRefId(`RPT-${data.id}`);
-      setStep(4);
-      setSubmitted(true);
+      await dispatch(submitReportThunk()).unwrap();
     } catch (err) {
       showToast(`❌ Report not sent: ${err.message}`);
-    } finally {
-      setSubmitting(false);
     }
-  };
-
-  const resetForm = () => {
-    setStep(1);
-    setSelectedReason('');
-    setAdditionalContext('');
-    setConfirmed(false);
-    setSubmitted(false);
-    setRefId('');
-    setSelectedTarget(null);
-    setUserSearch('');
-    setSearchResults([]);
   };
 
   const goStep = (s) => {
-    if (s === 2 && !selectedTarget) {
+    if (s === 2 && !report.selectedTarget) {
       showToast('⚠️ Please select a user to report first.');
       return;
     }
-    if (s === 3 && !selectedReason) {
+    if (s === 3 && !report.selectedReason) {
       showToast('⚠️ Please select a reason.');
       return;
     }
-    setStep(s);
+    dispatch(stepChanged(s));
   };
 
   return {
     currentUser,
-    step,
-    setStep,
-    selectedReason,
-    setSelectedReason,
-    additionalContext,
-    setAdditionalContext,
-    confirmed,
-    setConfirmed,
-    submitted,
-    refId,
-    userSearch,
-    selectedTarget,
-    setSelectedTarget,
-    searchResults,
-    submitting,
+    step: report.step,
+    setStep: (s) => dispatch(stepChanged(s)),
+    selectedReason: report.selectedReason,
+    setSelectedReason: (r) => dispatch(reasonSelected(r)),
+    additionalContext: report.additionalContext,
+    setAdditionalContext: (text) => dispatch(contextChanged(text)),
+    confirmed: report.confirmed,
+    setConfirmed: (value) => dispatch(confirmedChanged(value)),
+    submitted: report.submitted,
+    refId: report.refId,
+    userSearch: report.userSearch,
+    selectedTarget: report.selectedTarget,
+    setSelectedTarget: (target) => dispatch(targetSelected(target)),
+    searchResults: report.searchResults,
+    submitting: report.submitting,
     handleUserSearch,
     submitReport,
-    resetForm,
+    resetForm: () => dispatch(reportReset()),
     goStep,
   };
 }

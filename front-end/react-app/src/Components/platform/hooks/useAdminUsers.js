@@ -1,143 +1,113 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { apiRequest, getStoredUser } from '../../../services/api';
+import { useCallback, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import {
+  fetchUsers,
+  updateUserRole as updateUserRoleThunk,
+  suspendUser as suspendUserThunk,
+  banUser as banUserThunk,
+  reinstateUser as reinstateUserThunk,
+  userSearchChanged,
+  userRoleFilterChanged,
+  editingUserChanged,
+  selectAdminUsers,
+  selectUserSearch,
+  selectUserRoleFilter,
+  selectEditingUser,
+  selectFilteredUsers,
+} from '../../../store/slices/adminUsersSlice';
 
 /**
- * Custom hook managing user directory, role editing, suspensions, bans, and reinstatement.
- * All mutations call the API first, await confirmation, then refresh the user list.
- * No optimistic local updates. Each successful action is reported to onAudit.
+ * Custom hook connecting the Users tab to the Redux adminUsers slice.
+ * The thunks call the API, log the audit entry and re-fetch; this hook adds the
+ * confirmation prompts, the "not yourself" guards and the toasts.
  */
-export default function useAdminUsers(showToast, onAudit) {
-  const [users, setUsers] = useState([]);
-  const [userSearch, setUserSearch] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState('all');
-  const [editingUser, setEditingUser] = useState(null);
+export default function useAdminUsers(showToast) {
+  const dispatch = useDispatch();
+  const adminId = useSelector(selectCurrentUser)?.id;
+  const users = useSelector(selectAdminUsers);
+  const userSearch = useSelector(selectUserSearch);
+  const userRoleFilter = useSelector(selectUserRoleFilter);
+  const editingUser = useSelector(selectEditingUser);
+  const filteredUsers = useSelector(selectFilteredUsers);
 
-  const adminUser = getStoredUser();
-  const showToastRef = useRef(showToast);
-  const onAuditRef = useRef(onAudit);
-  useEffect(() => {
-    showToastRef.current = showToast;
-    onAuditRef.current = onAudit;
-  }, [showToast, onAudit]);
-
-  const userLabel = useCallback((userId) => {
-    const u = users.find((x) => x.id === userId);
-    return u?.username ? `@${u.username}` : `user #${userId}`;
-  }, [users]);
-
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      const matchRole = userRoleFilter === 'all' || u.role === userRoleFilter;
-      const matchSearch =
-        !userSearch ||
-        u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
-        u.username?.toLowerCase().includes(userSearch.toLowerCase()) ||
-        u.email?.toLowerCase().includes(userSearch.toLowerCase());
-      return matchRole && matchSearch;
-    });
-  }, [users, userSearch, userRoleFilter]);
-
-  const refreshUsers = useCallback(async () => {
-    try {
-      const data = await apiRequest('/users');
-      setUsers(Array.isArray(data) ? data : []);
-    } catch { /* leave current list */ }
-  }, []);
+  const refreshUsers = useCallback(() => dispatch(fetchUsers()), [dispatch]);
 
   // Initial load once on mount
   useEffect(() => {
     refreshUsers();
   }, [refreshUsers]);
 
-  const updateUserRole = useCallback(async (userId, newRole) => {
-    if (userId === adminUser?.id) {
-      showToastRef.current?.('⚠️ Cannot change your own role');
+  const usernameOf = (userId) => users.find((u) => u.id === userId)?.username;
+
+  const updateUserRole = async (userId, newRole) => {
+    if (userId === adminId) {
+      showToast('⚠️ Cannot change your own role');
       return;
     }
     try {
-      await apiRequest(`/users/${userId}/role`, {
-        method: 'PATCH',
-        body: JSON.stringify({ role: newRole }),
-      });
-      setEditingUser(null);
-      showToastRef.current?.(`✓ Role updated to ${newRole}`);
-      onAuditRef.current?.('User Role Changed', userLabel(userId), `Role set to ${newRole}`);
-      await refreshUsers();
+      await dispatch(updateUserRoleThunk({ userId, role: newRole })).unwrap();
+      showToast(`✓ Role updated to ${newRole}`);
     } catch (err) {
-      showToastRef.current?.(`❌ ${err.message}`);
+      showToast(`❌ ${err.message}`);
     }
-  }, [adminUser?.id, refreshUsers, userLabel]);
+  };
 
-  const suspendUser = useCallback(async (userId, reason) => {
-    if (userId === adminUser?.id) {
-      showToastRef.current?.('❌ Cannot suspend your own account');
+  const suspendUser = async (userId, reason) => {
+    if (userId === adminId) {
+      showToast('❌ Cannot suspend your own account');
       return;
     }
-    const targetUser = users.find((u) => u.id === userId);
-    const defaultReason = reason || 'Violation of community guidelines';
-    const r = window.prompt(`Suspend ${targetUser?.username || `user #${userId}`}?\nEnter reason:`, defaultReason);
+    const r = window.prompt(
+      `Suspend ${usernameOf(userId) || `user #${userId}`}?\nEnter reason:`,
+      reason || 'Violation of community guidelines'
+    );
     if (!r?.trim()) return;
     try {
-      await apiRequest(`/users/${userId}/suspend`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: r.trim() }),
-      });
-      showToastRef.current?.('⚠️ User suspended');
-      onAuditRef.current?.('User Suspended', userLabel(userId), r.trim());
-      await refreshUsers();
+      await dispatch(suspendUserThunk({ userId, reason: r.trim() })).unwrap();
+      showToast('⚠️ User suspended');
     } catch (err) {
-      showToastRef.current?.(`❌ ${err.message}`);
+      showToast(`❌ ${err.message}`);
     }
-  }, [adminUser?.id, users, refreshUsers, userLabel]);
+  };
 
-  const banUser = useCallback(async (userId, reason) => {
-    if (userId === adminUser?.id) {
-      showToastRef.current?.('❌ Cannot ban your own account');
+  const banUser = async (userId, reason) => {
+    if (userId === adminId) {
+      showToast('❌ Cannot ban your own account');
       return;
     }
-    const targetUser = users.find((u) => u.id === userId);
-    const defaultReason = reason || 'Repeated policy violations';
-    const r = window.prompt(`Permanently ban @${targetUser?.username || `user #${userId}`}?\nEnter reason:`, defaultReason);
+    const r = window.prompt(
+      `Permanently ban @${usernameOf(userId) || `user #${userId}`}?\nEnter reason:`,
+      reason || 'Repeated policy violations'
+    );
     if (!r?.trim()) return;
     try {
-      await apiRequest(`/users/${userId}/ban`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: r.trim() }),
-      });
-      showToastRef.current?.(`⛔ User banned`);
-      onAuditRef.current?.('User Banned', userLabel(userId), r.trim());
-      await refreshUsers();
+      await dispatch(banUserThunk({ userId, reason: r.trim() })).unwrap();
+      showToast('⛔ User banned');
     } catch (err) {
-      showToastRef.current?.(`❌ ${err.message}`);
+      showToast(`❌ ${err.message}`);
     }
-  }, [adminUser?.id, users, refreshUsers, userLabel]);
+  };
 
-  const reinstateUser = useCallback(async (userId) => {
-    const targetUser = users.find((u) => u.id === userId);
-    if (!window.confirm(`Reinstate ${targetUser?.username || `user #${userId}`}? Their account will be unlocked.`)) return;
+  const reinstateUser = async (userId) => {
+    if (!window.confirm(`Reinstate ${usernameOf(userId) || `user #${userId}`}? Their account will be unlocked.`)) return;
     try {
-      await apiRequest(`/users/${userId}/reinstate`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: 'Reinstated by admin' }),
-      });
-      showToastRef.current?.('✓ User reinstated');
-      onAuditRef.current?.('User Reinstated', userLabel(userId), 'Reinstated by admin');
-      await refreshUsers();
+      await dispatch(reinstateUserThunk(userId)).unwrap();
+      showToast('✓ User reinstated');
     } catch (err) {
-      showToastRef.current?.(`❌ ${err.message}`);
+      showToast(`❌ ${err.message}`);
     }
-  }, [users, refreshUsers, userLabel]);
+  };
 
   return {
     users,
-    setUsers,
     refreshUsers,
     userSearch,
-    setUserSearch,
+    setUserSearch: (value) => dispatch(userSearchChanged(value)),
     userRoleFilter,
-    setUserRoleFilter,
+    setUserRoleFilter: (value) => dispatch(userRoleFilterChanged(value)),
     editingUser,
-    setEditingUser,
+    setEditingUser: (userId) => dispatch(editingUserChanged(userId)),
     filteredUsers,
     updateUserRole,
     suspendUser,
