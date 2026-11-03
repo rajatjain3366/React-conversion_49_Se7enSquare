@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { authService } from '../services/authService';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectCurrentUser, logout } from '../store/slices/authSlice';
 import { getHomeRoute } from '../services/roleAccess';
 import '../styles/sidebar.css';
 
@@ -86,36 +87,27 @@ function getSections(role) {
   return sections;
 }
 
-function getCurrentUser() {
-  try {
-    const raw = authService.getCurrentUser() || {};
-    const role = raw.role || 'user';
-    return {
-      firstName: raw.firstName || raw.name?.split(' ')[0] || raw.username || 'User',
-      lastName: raw.lastName || raw.name?.split(' ').slice(1).join(' ') || '',
-      username: raw.username || 'user',
-      role,
-      avatar: raw.avatar || null,
-    };
-  } catch {
-    return { firstName: 'User', lastName: '', username: 'user', role: 'user', avatar: null };
-  }
+function toSidebarUser(sessionUser) {
+  const raw = sessionUser || {};
+  return {
+    firstName: raw.firstName || raw.name?.split(' ')[0] || raw.username || 'User',
+    lastName: raw.lastName || raw.name?.split(' ').slice(1).join(' ') || '',
+    username: raw.username || 'user',
+    role: raw.role || 'user',
+    avatar: raw.avatar || null,
+  };
 }
 
 export default function SideBar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('nexus_sidebar_collapsed') === 'true'
   );
-  const [user, setUser] = useState(getCurrentUser);
-
-  useEffect(() => {
-    const refresh = () => setUser(getCurrentUser());
-    refresh();
-    window.addEventListener('session-updated', refresh);
-    return () => window.removeEventListener('session-updated', refresh);
-  }, [location.pathname]);
+  // Re-renders automatically when login, logout or a profile update changes the store
+  const sessionUser = useSelector(selectCurrentUser);
+  const user = useMemo(() => toSidebarUser(sessionUser), [sessionUser]);
 
   const toggleCollapse = () => {
     const next = !collapsed;
@@ -148,8 +140,7 @@ export default function SideBar() {
           to={getHomeRoute(role)}
           onClick={(e) => {
             e.preventDefault();
-            const freshRole = authService.getCurrentUser()?.role || localStorage.getItem('role') || role;
-            navigate(getHomeRoute(freshRole));
+            navigate(getHomeRoute(role));
           }}
           className="sb-brand__logo"
           style={{ textDecoration: 'none', cursor: 'pointer' }}
@@ -263,8 +254,8 @@ export default function SideBar() {
           <button
             className="sb-profile__logout"
             onClick={() => {
-              authService.clearSession();
-              window.location.href = '/login';
+              dispatch(logout());
+              navigate('/login');
             }}
             aria-label="Log out"
             title="Log out"

@@ -1,15 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../store/slices/authSlice';
 
-function getInitials() {
-  try {
-    const raw = JSON.parse(localStorage.getItem('nexus_user') || localStorage.getItem('currentUser') || '{}');
-    const first = raw.firstName || raw.username || 'G';
-    const last = raw.lastName || '';
-    return (first[0] + (last[0] || first[1] || '')).toUpperCase();
-  } catch {
-    return 'GU';
-  }
+function getInitials(user) {
+  const raw = user || {};
+  const first = raw.firstName || raw.username || 'G';
+  const last = raw.lastName || '';
+  return (first[0] + (last[0] || first[1] || '')).toUpperCase();
 }
 
 /**
@@ -24,7 +22,7 @@ export default function Header({
   onAvatarClick,
 }) {
   const navigate = useNavigate();
-  const initials = getInitials();
+  const initials = getInitials(useSelector(selectCurrentUser));
 
   const handleAvatarClick = () => {
     if (onAvatarClick) {

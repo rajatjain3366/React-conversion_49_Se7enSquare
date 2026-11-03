@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiRequest, storeUserSession, clearUserSession } from '../../../services/api';
+import { useDispatch } from 'react-redux';
+import { apiRequest } from '../../../services/api';
+import { profileUpdated, logout } from '../../../store/slices/authSlice';
 import { DEFAULT_PRIVACY, EMPTY_PASSWORDS, EMPTY_ORGANISER, EMPTY_STATEMENT } from '../data/profileSettingsData';
 
 const fieldsOf = u => Object.fromEntries(['firstName', 'lastName', 'username', 'email', 'phone', 'bio', 'avatar'].map(k => [k, u[k] ?? '']));
@@ -8,6 +10,7 @@ const errorMessages = err => Array.isArray(err.data?.message) ? err.data.message
 
 export default function useProfileSettings() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState(fieldsOf({}));
   const [privacy, setPrivacy] = useState(DEFAULT_PRIVACY);
@@ -125,7 +128,7 @@ export default function useProfileSettings() {
         body: JSON.stringify(passwords),
       });
       setUser(prev => ({ ...prev, hasPassword: true }));
-      storeUserSession(updated);
+      dispatch(profileUpdated(updated));
       setPasswords(EMPTY_PASSWORDS);
       setShowPassword({});
       setErrors([]);
@@ -186,7 +189,7 @@ export default function useProfileSettings() {
       setFormData(fieldsOf(saved));
       setPrivacy({ ...DEFAULT_PRIVACY, ...saved.privacy });
       setAvatarFile(null);
-      storeUserSession(saved);
+      dispatch(profileUpdated(saved));
       profileSaved = true;
 
       if (changePassword) {
@@ -195,7 +198,7 @@ export default function useProfileSettings() {
           body: JSON.stringify(passwords),
         });
         setUser(prev => ({ ...prev, hasPassword: true }));
-        storeUserSession(updated);
+        dispatch(profileUpdated(updated));
         setPasswords(EMPTY_PASSWORDS);
         setShowPassword({});
       }
@@ -310,7 +313,7 @@ export default function useProfileSettings() {
   };
 
   const handleLogout = () => {
-    clearUserSession();
+    dispatch(logout());
     navigate('/login');
   };
 

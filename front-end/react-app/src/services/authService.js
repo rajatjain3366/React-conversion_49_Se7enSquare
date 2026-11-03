@@ -1,8 +1,10 @@
 /**
  * Authentication Service Module
- * Handles login, registration, session persistence, and logout.
+ * Handles the login and registration API calls.
+ * The session itself lives in the Redux auth slice: callers dispatch
+ * loginSuccess(user) / logout(), and the store keeps localStorage in sync.
  */
-import { apiRequest, getStoredUser, storeUserSession, clearUserSession } from './api';
+import { apiRequest, getStoredUser } from './api';
 
 export const authService = {
   /**
@@ -46,29 +48,11 @@ export const authService = {
     if (credential) payload.credential = credential;
     if (accessToken) payload.accessToken = accessToken;
 
-    const user = await apiRequest('/auth/google', {
+    return await apiRequest('/auth/google', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-
-    this.saveSession(user);
-    return user;
   },
-
-  /**
-   * Persists authenticated user in localStorage with whitelisted fields only.
-   */
-  saveSession(user) {
-    storeUserSession(user);
-  },
-
-  /**
-   * Clears authenticated session from localStorage.
-   */
-  clearSession() {
-    clearUserSession();
-  },
-
 
   /**
    * Retrieves active user or fallback.

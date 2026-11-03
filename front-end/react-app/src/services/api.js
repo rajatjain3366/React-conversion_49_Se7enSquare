@@ -41,18 +41,16 @@ export function clearUserSession() {
 }
 
 /**
- * Persists an authenticated user session into localStorage with whitelisted fields only.
+ * Reduces a backend user object to the whitelisted session fields.
+ * Used both for localStorage and for the Redux auth slice, so both hold the same shape.
  */
-export function storeUserSession(user) {
-  if (!user) {
-    clearUserSession();
-    return;
-  }
+export function toSessionUser(user) {
+  if (!user) return null;
 
   const rawId = user.id ?? user.userId ?? user._id;
   const parsedId = rawId !== undefined && rawId !== null && !isNaN(Number(rawId)) ? Number(rawId) : rawId;
 
-  const safeSession = {
+  return {
     id: parsedId,
     username: user.username,
     role: user.role || 'user',
@@ -62,12 +60,24 @@ export function storeUserSession(user) {
     avatar: user.avatar || null,
     status: user.status || 'active',
   };
+}
+
+/**
+ * Persists an authenticated user session into localStorage with whitelisted fields only.
+ * React code should dispatch the auth slice actions instead; the store's listener
+ * middleware calls this so localStorage (read by apiRequest) stays in sync.
+ */
+export function storeUserSession(user) {
+  const safeSession = toSessionUser(user);
+  if (!safeSession) {
+    clearUserSession();
+    return;
+  }
 
   localStorage.removeItem('user');
   localStorage.setItem('nexus_user', JSON.stringify(safeSession));
   localStorage.setItem('currentUser', JSON.stringify(safeSession));
   localStorage.setItem('role', safeSession.role);
-  window.dispatchEvent(new Event('session-updated'));
 }
 
 /**

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from './store/slices/authSlice';
 
 // Pages
 import Index from './Pages/Index';
@@ -25,12 +27,12 @@ import OrganizerDashboard from './Pages/OrganizerDashboard/OrganizerDashboard';
 import OwnerDashboard from './Pages/OwnerDashboard';
 import ProfileSettings from './Pages/ProfileSettings';
 import User from './Pages/User';
-import { authService } from './services/authService';
 import { getHomeRoute } from './services/roleAccess';
 
-// Protected Route wrapper with role-based access control
+// Protected Route wrapper with role-based access control.
+// Reads the user from the Redux store, so logging in or out re-renders it.
 function ProtectedRoute({ children, allowedRoles, allowOwner = false }) {
-  const user = authService.getCurrentUser();
+  const user = useSelector(selectCurrentUser);
 
   if (!user || !user.username || user.id === undefined || user.id === null) {
     return <Navigate to="/login" replace />;

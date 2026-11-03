@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { authService } from '../../../services/authService';
+import { loginSuccess } from '../../../store/slices/authSlice';
 import { initiateGoogleSignIn } from '../../../services/googleAuth';
 import { getHomeRoute } from '../../../services/roleAccess';
 
@@ -18,6 +20,7 @@ export const PERSONAS = [
  */
 export default function useAuthForm() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // ── 1. Tab & View State ──
   // Tabs: 'login' | 'register' | 'forgot' | 'forgot-success'
@@ -111,7 +114,7 @@ export default function useAuthForm() {
         role: loginRole,
       });
 
-      authService.saveSession(user);
+      dispatch(loginSuccess(user));
 
       showToast(
         '✅',
@@ -312,6 +315,7 @@ export default function useAuthForm() {
           accessToken: result.accessToken,
           credential: result.credential,
         });
+        dispatch(loginSuccess(user));
 
         showToast(
           '🎉',
