@@ -1,17 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { apiRequest } from '../../../services/api';
-import { profileUpdated, logout } from '../../../store/slices/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { logout } from '../../../store/slices/authSlice';
+import { selectCurrentPlan, selectPricingLoading } from '../../../store/slices/pricingSlice';
+import {
+  fetchProfileSettings,
+  saveProfile,
+  changePassword,
+  applyOrganizer as applyOrganizerThunk,
+  fetchModeratorQuiz,
+  applyModerator,
+  selectProfileState,
+} from '../../../store/slices/profileSlice';
 import { DEFAULT_PRIVACY, EMPTY_PASSWORDS, EMPTY_ORGANISER, EMPTY_STATEMENT } from '../data/profileSettingsData';
 
 const fieldsOf = u => Object.fromEntries(['firstName', 'lastName', 'username', 'email', 'phone', 'bio', 'avatar'].map(k => [k, u[k] ?? '']));
-const errorMessages = err => Array.isArray(err.data?.message) ? err.data.message : [err.message];
 
+/**
+ * Connects Profile Settings to the Redux profile slice (saved profile, application
+ * statuses) and pricing slice (plan). The edit forms are page-only and stay local;
+ * isDirty compares them with the saved profile in the store.
+ */
 export default function useProfileSettings() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [user, setUser] = useState(null);
+  const { me: user, loading, saving, applying, organiser, moderator } = useSelector(selectProfileState);
+  const currentPlan = useSelector(selectCurrentPlan);
+  const planLoading = useSelector(selectPricingLoading);
+  const plan = planLoading ? null : { plan: currentPlan };
   const [formData, setFormData] = useState(fieldsOf({}));
   const [privacy, setPrivacy] = useState(DEFAULT_PRIVACY);
   const [passwords, setPasswords] = useState(EMPTY_PASSWORDS);
@@ -20,42 +36,32 @@ export default function useProfileSettings() {
   const [avatarPreview, setAvatarPreview] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   const [errors, setErrors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
-  const [plan, setPlan] = useState(null);
-  const [organiser, setOrganiser] = useState(null);
-  const [moderator, setModerator] = useState(null);
   const [applicationErrors, setApplicationErrors] = useState({});
   const [organiserForm, setOrganiserForm] = useState(EMPTY_ORGANISER);
   const [statement, setStatement] = useState(EMPTY_STATEMENT);
   const [questions, setQuestions] = useState([]);
   const [quizAnswers, setQuizAnswers] = useState([]);
   const [quizOpen, setQuizOpen] = useState(false);
-  const [applying, setApplying] = useState(false);
+
+  // Fill the forms from the saved profile (on load and after a save)
+  const resetForms = profile => {
+    setFormData(fieldsOf(profile));
+    setPrivacy({ ...DEFAULT_PRIVACY, ...profile.privacy });
+  };
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        const profile = await apiRequest('/users/me');
+    dispatch(fetchProfileSettings()).unwrap()
+      .then(({ profile, errors: statusErrors }) => {
         if (cancelled) return;
-        setUser(profile); setFormData(fieldsOf(profile));
+        setFormData(fieldsOf(profile));
         setPrivacy({ ...DEFAULT_PRIVACY, ...profile.privacy });
-        const requests = [];
-        if (profile.role !== 'owner') requests.push(['plan', `/subscriptions/status?userId=${profile.id}`, setPlan]);
-        if (['user', 'organizer'].includes(profile.role)) requests.push(['organiser', '/organisers/profile', setOrganiser]);
-        if (['user', 'organizer', 'community_manager', 'moderator'].includes(profile.role)) requests.push(['moderator', '/moderator-certification/status', setModerator]);
-        await Promise.all(requests.map(async ([key, endpoint, setter]) => {
-          try { const data = await apiRequest(endpoint); if (!cancelled) setter(data); }
-          catch (err) { if (!cancelled) setApplicationErrors(prev => ({ ...prev, [key]: err.message })); }
-        }));
-      } catch (err) { if (!cancelled) setErrors(errorMessages(err)); }
-      finally { if (!cancelled) setLoading(false); }
-    }
-    load();
+        setApplicationErrors(statusErrors);
+      })
+      .catch(messages => { if (!cancelled && Array.isArray(messages)) setErrors(messages); });
     return () => { cancelled = true; };
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     if (!avatarFile) { setAvatarPreview(''); return; }
@@ -93,10 +99,7 @@ export default function useProfileSettings() {
   };
 
   const discardChanges = () => {
-    if (user) {
-      setFormData(fieldsOf(user));
-      setPrivacy({ ...DEFAULT_PRIVACY, ...user.privacy });
-    }
+    if (user) resetForms(user);
     setPasswords(EMPTY_PASSWORDS);
     setAvatarFile(null);
     setErrors([]);
@@ -120,23 +123,15 @@ export default function useProfileSettings() {
     setErrors(validation);
     if (validation.length) return;
 
-    setSaving(true);
     setToastMsg('');
     try {
-      const updated = await apiRequest('/auth/change-password', {
-        method: 'POST',
-        body: JSON.stringify(passwords),
-      });
-      setUser(prev => ({ ...prev, hasPassword: true }));
-      dispatch(profileUpdated(updated));
+      await dispatch(changePassword(passwords)).unwrap();
       setPasswords(EMPTY_PASSWORDS);
       setShowPassword({});
       setErrors([]);
       setToastMsg('✅ Password updated successfully!');
-    } catch (err) {
-      setErrors(errorMessages(err));
-    } finally {
-      setSaving(false);
+    } catch (messages) {
+      setErrors(messages);
     }
   };
 
@@ -153,8 +148,8 @@ export default function useProfileSettings() {
       validation.push('bio: must contain 5 to 160 characters (or leave blank)');
     }
 
-    const changePassword = Object.values(passwords).some(Boolean);
-    if (changePassword) {
+    const wantsPasswordChange = Object.values(passwords).some(Boolean);
+    if (wantsPasswordChange) {
       if (user.hasPassword && !passwords.current) validation.push('current: enter your current password');
       if (passwords.new.length < 8 || !/[A-Za-z]/.test(passwords.new) || !/\d/.test(passwords.new)) {
         validation.push('new: use at least 8 characters, including a letter and a number');
@@ -165,58 +160,38 @@ export default function useProfileSettings() {
     setErrors(validation);
     if (validation.length) return;
 
-    setSaving(true);
     setToastMsg('');
     let profileSaved = false;
 
+    const changes = Object.fromEntries(
+      Object.entries(formData).filter(([key, value]) => value !== (user[key] ?? ''))
+    );
+    changes.privacy = privacy;
+    if (!avatarFile && formData.avatar === '' && user.avatar) changes.avatar = null;
+
     try {
-      const body = Object.fromEntries(
-        Object.entries(formData).filter(([key, value]) => value !== (user[key] ?? ''))
-      );
-      body.privacy = privacy;
-
-      if (avatarFile) {
-        const upload = new FormData();
-        upload.append('file', avatarFile);
-        const result = await apiRequest('/uploads', { method: 'POST', body: upload });
-        body.avatar = result.fileUrl;
-      } else if (formData.avatar === '' && user.avatar) {
-        body.avatar = null;
-      }
-
-      const saved = await apiRequest('/users/me', { method: 'PATCH', body: JSON.stringify(body) });
-      setUser(saved);
-      setFormData(fieldsOf(saved));
-      setPrivacy({ ...DEFAULT_PRIVACY, ...saved.privacy });
+      const saved = await dispatch(saveProfile({ changes, avatarFile })).unwrap();
+      resetForms(saved);
       setAvatarFile(null);
-      dispatch(profileUpdated(saved));
       profileSaved = true;
 
-      if (changePassword) {
-        const updated = await apiRequest('/auth/change-password', {
-          method: 'POST',
-          body: JSON.stringify(passwords),
-        });
-        setUser(prev => ({ ...prev, hasPassword: true }));
-        dispatch(profileUpdated(updated));
+      if (wantsPasswordChange) {
+        await dispatch(changePassword(passwords)).unwrap();
         setPasswords(EMPTY_PASSWORDS);
         setShowPassword({});
       }
 
       setToastMsg('✅ Profile and settings saved successfully.');
-    } catch (err) {
-      setErrors(errorMessages(err));
+    } catch (messages) {
+      setErrors(messages);
       if (profileSaved) {
         setToastMsg('Profile saved. Password was not changed; correct the error and try again.');
       }
-    } finally {
-      setSaving(false);
     }
   };
 
   const applyOrganizer = async (overrideData) => {
     if (applying) return;
-    setApplying(true);
     setApplicationErrors(prev => ({ ...prev, organiser: '' }));
 
     const submission = overrideData || {
@@ -228,17 +203,11 @@ export default function useProfileSettings() {
     };
 
     try {
-      const data = await apiRequest('/organisers/apply', {
-        method: 'POST',
-        body: JSON.stringify(submission),
-      });
-      setOrganiser(data);
+      await dispatch(applyOrganizerThunk(submission)).unwrap();
       setOrganiserForm(EMPTY_ORGANISER);
       setToastMsg('🎉 Organizer application submitted successfully! Admin review is pending.');
-    } catch (err) {
-      setApplicationErrors(prev => ({ ...prev, organiser: errorMessages(err).join('; ') }));
-    } finally {
-      setApplying(false);
+    } catch (messages) {
+      setApplicationErrors(prev => ({ ...prev, organiser: messages.join('; ') }));
     }
   };
 
@@ -258,7 +227,7 @@ export default function useProfileSettings() {
   const openQuiz = async () => {
     setApplicationErrors(prev => ({ ...prev, moderator: '' }));
     try {
-      const qData = await apiRequest('/moderator-certification/quiz');
+      const qData = await dispatch(fetchModeratorQuiz()).unwrap();
       setQuestions(qData);
       setQuizAnswers(new Array(qData.length).fill(undefined));
       setStatement(prev => ({
@@ -283,20 +252,15 @@ export default function useProfileSettings() {
       return;
     }
 
-    setApplying(true);
     setApplicationErrors(prev => ({ ...prev, moderator: '' }));
     try {
-      const data = await apiRequest('/moderator-certification/apply', {
-        method: 'POST',
-        body: JSON.stringify({
-          answers: quizAnswers,
-          statement: {
-            ...statement,
-            weeklyHours: Number(statement.weeklyHours) || 10,
-          },
-        }),
-      });
-      setModerator(data);
+      const data = await dispatch(applyModerator({
+        answers: quizAnswers,
+        statement: {
+          ...statement,
+          weeklyHours: Number(statement.weeklyHours) || 10,
+        },
+      })).unwrap();
       setQuizOpen(false);
       setStatement(EMPTY_STATEMENT);
       setQuizAnswers([]);
@@ -305,10 +269,8 @@ export default function useProfileSettings() {
       } else {
         setToastMsg(`Quiz submitted. Status: ${data.status} (Score: ${data.quizScore}%).`);
       }
-    } catch (err) {
-      setApplicationErrors(prev => ({ ...prev, moderator: errorMessages(err).join('; ') }));
-    } finally {
-      setApplying(false);
+    } catch (messages) {
+      setApplicationErrors(prev => ({ ...prev, moderator: messages.join('; ') }));
     }
   };
 

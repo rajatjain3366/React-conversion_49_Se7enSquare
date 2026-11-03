@@ -1,31 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-
-import { apiRequest } from '../../../services/api';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchUsers, selectAdminUsers } from '../../../store/slices/adminUsersSlice';
 
 /**
- * Manages fetching, filtering, and search state for the User Management page.
+ * Manages the User Management page. The user list is the same adminUsers slice
+ * the Admin Dashboard's Users tab uses; search and role filter are page-only state.
  */
 export default function useUserManagement() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const users = useSelector(selectAdminUsers);
 
-  const [users,      setUsers]      = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [search,     setSearch]     = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
   useEffect(() => {
-    apiRequest('/users')
-      .then(data => {
-        setUsers(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setUsers([]);
-        setLoading(false);
-      });
-  }, []);
+    // A failed fetch leaves the list empty, like before
+    dispatch(fetchUsers()).finally(() => setLoading(false));
+  }, [dispatch]);
 
   const filteredUsers = users.filter(u => {
     const matchSearch =

@@ -1,120 +1,68 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { APPEAL_TYPES } from '../data/appealData';
-import { appealService } from '../../../services/appealService';
-import { authService } from '../../../services/authService';
-import { apiRequest } from '../../../services/api';
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import { fetchMyProfile, selectProfile } from '../../../store/slices/profileSlice';
+import {
+  fetchActiveSanction,
+  fetchMyAppeals,
+  submitAppeal,
+  selectAppealState,
+} from '../../../store/slices/appealSlice';
 
 /**
- * Manages all state, validation, and submission logic for the Appeal page.
- * Reads account restriction info from URL params (set by Login redirect) or
- * from GET /sanctions/mine for logged-in users.
+ * Connects the Appeal page to Redux: account status from the profile slice,
+ * the active sanction and the user's appeals from the appeal slice.
+ * Restriction details come from URL params (set by the Login redirect) when present.
+ * The appeal form itself is page-only state.
  */
 export default function useAppeal() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
-  const rawUser = authService.getCurrentUser();
-  const [user, setUser] = useState({
-    role: rawUser?.role || 'user',
-    firstName: rawUser?.firstName || 'User',
-    username: rawUser?.username || 'user',
-    id: rawUser?.id || null,
-    status: rawUser?.status || 'active',
-    statusReason: rawUser?.statusReason || '',
-  });
+  const sessionUser = useSelector(selectCurrentUser);
+  const profile = useSelector(selectProfile);
+  const { sanction, myAppeals, loadingAppeals, submitting } = useSelector(selectAppealState);
 
-  // Fetch full profile to get up-to-date status & reason
-  useEffect(() => {
-    if (!rawUser?.id) return;
-    apiRequest('/users/me')
-      .then(profile => {
-        if (profile) {
-          setUser(prev => ({
-            ...prev,
-            status: profile.status || 'active',
-            statusReason: profile.statusReason || '',
-            username: profile.username || prev.username,
-            firstName: profile.firstName || prev.firstName,
-          }));
-        }
-      })
-      .catch(() => { /* keep session data */ });
-  }, [rawUser?.id]);
+  // Session data first, replaced by the fresh profile (status & reason) once loaded
+  const source = profile || sessionUser;
+  const user = {
+    role: sessionUser?.role || 'user',
+    firstName: source?.firstName || 'User',
+    username: source?.username || 'user',
+    id: sessionUser?.id || null,
+    status: source?.status || 'active',
+    statusReason: source?.statusReason || '',
+  };
 
-  // Extract restriction details from URL (set on login redirect) or fetch from API
-  const [action, setAction] = useState(() => {
+  // Restriction from the login redirect, if any
+  const [urlAction] = useState(() => {
     const code = searchParams.get('accountStatus');
-    const reason = searchParams.get('reason');
-    const until = searchParams.get('until');
-    if (code) {
-      return {
-        type: code === 'ACCOUNT_BANNED' ? 'Account Ban' : 'Account Suspension',
-        reason: reason || 'Violation of community guidelines',
-        until: until || null,
-        id: `SAN-${Date.now()}`,
-      };
-    }
-    return null;
+    if (!code) return null;
+    return {
+      type: code === 'ACCOUNT_BANNED' ? 'Account Ban' : 'Account Suspension',
+      reason: searchParams.get('reason') || 'Violation of community guidelines',
+      until: searchParams.get('until') || null,
+      id: `SAN-${Date.now()}`,
+    };
   });
+  const action = urlAction || sanction;
 
   const [appealType, setAppealType] = useState('');
   const [statement, setStatement] = useState('');
   const [commitment, setCommitment] = useState('');
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [refId, setRefId] = useState('');
-  const [myAppeals, setMyAppeals] = useState([]);
-  const [loadingAppeals, setLoadingAppeals] = useState(false);
 
-  // If no URL params, try fetching the most recent active sanction for context
+  // Thunk conditions skip all three when nobody is logged in
   useEffect(() => {
-    if (action || !user.id) return;
-    let cancelled = false;
-    apiRequest('/sanctions/mine')
-      .then((sanctions) => {
-        if (cancelled || !Array.isArray(sanctions)) return;
-        // Backend SanctionRecord fields: status ('active' | 'reversed') and
-        // expiresAt (null = permanent). The old code read s.active / s.endsAt,
-        // which don't exist, so no sanction was ever shown.
-        // Newest first; skip reversed or already-expired sanctions.
-        const now = Date.now();
-        const active = [...sanctions].reverse().find(
-          (s) => s.status === 'active' &&
-            (s.type === 'ban' || s.type === 'suspend') &&
-            (!s.expiresAt || new Date(s.expiresAt).getTime() > now)
-        );
-        if (active && !cancelled) {
-          setAction({
-            type: active.type === 'ban' ? 'Account Ban' : 'Account Suspension',
-            reason: active.reason || 'Violation of community guidelines',
-            until: active.expiresAt || null,
-            id: `SAN-${active.id}`,
-          });
-        }
-      })
-      .catch(() => { /* sanctions endpoint may be unavailable if banned — that's ok */ });
-    return () => { cancelled = true; };
-  }, [user.id, action]);
-
-  const fetchAppeals = useCallback(async () => {
-    if (!user.id) return;
-    setLoadingAppeals(true);
-    try {
-      const data = await appealService.getAppeals(user.id);
-      if (Array.isArray(data)) {
-        setMyAppeals(data.filter((a) => !user.id || String(a.userId) === String(user.id)));
-      }
-    } catch (err) {
-      console.warn('Could not fetch appeals:', err);
-    } finally {
-      setLoadingAppeals(false);
-    }
-  }, [user.id]);
-
-  useEffect(() => {
-    fetchAppeals();
-  }, [fetchAppeals]);
+    dispatch(fetchMyProfile());
+    dispatch(fetchMyAppeals());
+    // The sanctions endpoint may be unavailable if banned: that's ok, action stays null
+    if (!urlAction) dispatch(fetchActiveSanction());
+  }, [dispatch, urlAction, sessionUser?.id]);
 
   const validate = () => {
     const errs = {};
@@ -139,10 +87,9 @@ export default function useAppeal() {
       });
       return;
     }
-    setSubmitting(true);
 
     const payload = {
-      userId: Number(user.id || 4),
+      userId: Number(user.id),
       actionId: action?.id || `ACT-${Date.now()}`,
       text: statement.trim(),
       acknowledgement: (commitment || 'I agree to the platform community guidelines').slice(0, 95),
@@ -150,16 +97,13 @@ export default function useAppeal() {
       evidence: [],
     };
 
-    // Show the success screen only with the real appeal ID from the backend.
+    // Show the success screen only with the real appeal ID from the backend
     try {
-      const data = await appealService.createAppeal(payload);
-      setRefId(`APL-${data.id}`);
-      fetchAppeals();
+      const id = await dispatch(submitAppeal(payload)).unwrap();
+      setRefId(`APL-${id}`);
       setSubmitted(true);
     } catch (err) {
       setErrors({ submit: `Appeal not sent: ${err.message}` });
-    } finally {
-      setSubmitting(false);
     }
   };
 

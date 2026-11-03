@@ -14,6 +14,9 @@ import organizerReducer from './slices/organizerSlice';
 import modPanelReducer from './slices/modPanelSlice';
 import notificationsReducer from './slices/notificationsSlice';
 import ownerDashboardReducer from './slices/ownerDashboardSlice';
+import profileReducer from './slices/profileSlice';
+import appealReducer from './slices/appealSlice';
+import chatReducer from './slices/chatSlice';
 import { listenerMiddleware } from './listenerMiddleware';
 
 /**
@@ -38,6 +41,9 @@ export const store = configureStore({
     modPanel: modPanelReducer,
     notifications: notificationsReducer,
     ownerDashboard: ownerDashboardReducer,
+    profile: profileReducer,
+    appeal: appealReducer,
+    chat: chatReducer,
   },
   // The listener middleware goes first, as recommended by Redux Toolkit
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().prepend(listenerMiddleware.middleware),

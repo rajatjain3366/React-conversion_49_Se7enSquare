@@ -1,11 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { DEFAULT_CHANNELS, EMOJIS } from '../data/chatData';
+import { selectCurrentUser } from '../../../store/slices/authSlice';
+import { toastShown } from '../../../store/slices/uiSlice';
+import {
+  fetchChatChannels,
+  fetchChatMembers,
+  fetchChatMessages,
+  sendChatMessage,
+  toggleChatReaction,
+  chatCleared,
+  selectChat,
+} from '../../../store/slices/chatSlice';
 
-import { apiRequest, getStoredUser } from '../../../services/api';
+// Shown when the page is opened without ?community=
+const NO_COMMUNITY_CHANNEL = { id: 'general', name: 'general', topic: 'The main hub 👋' };
 
-function getUser() {
-  const raw = getStoredUser();
+function toChatUser(raw) {
   if (!raw) {
     return { id: null, name: 'User', fullName: 'User', firstName: 'User', username: 'user', initials: 'U', role: 'user' };
   }
@@ -21,21 +33,13 @@ function getUser() {
   };
 }
 
-// Backend stores reactions as { "👍": [userId, userId, ...] } (who reacted).
-// The count is the array length. Emojis with nobody left are hidden.
-function toReactionList(reactions) {
-  if (!reactions || typeof reactions !== 'object') return [];
-  return Object.entries(reactions)
-    .map(([emoji, userIds]) => ({ emoji, count: Array.isArray(userIds) ? userIds.length : 0 }))
-    .filter((r) => r.count > 0);
-}
-
 /**
- * Manages all state, effects, and handlers for the Chat page.
- * Returns state and callbacks for the channel sidebar, message feed, input area, etc.
+ * Connects the Chat page to the Redux chat slice (channels, members, messages).
+ * The active channel, input box, search and panel toggles are page-only UI state.
  */
 export default function useChat() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
 
   const communityId    = searchParams.get('community') || '';
@@ -43,14 +47,15 @@ export default function useChat() {
   const initialChannel = decodeURIComponent(searchParams.get('channel') || 'general');
 
   const messagesEndRef = useRef(null);
-  const user = getUser();
+  const user = toChatUser(useSelector(selectCurrentUser));
+  const { channels, channelsLoading, members, messages } = useSelector(selectChat);
 
-  const [channels,        setChannels]        = useState(DEFAULT_CHANNELS);
-  const [activeChannel,   setActiveChannel]   = useState(
+  const [selectedChannel, setActiveChannel] = useState(
     () => DEFAULT_CHANNELS.find(c => c.name === initialChannel) || DEFAULT_CHANNELS[0]
   );
-  const [messages,        setMessages]        = useState([]);
-  const [members,         setMembers]         = useState([]);
+  const activeChannel = communityId ? selectedChannel : NO_COMMUNITY_CHANNEL;
+  const loading = communityId ? channelsLoading : false;
+
   const [msgInput,        setMsgInput]        = useState('');
   const [channelSearch,   setChannelSearch]   = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -61,111 +66,33 @@ export default function useChat() {
   const [replyTo,         setReplyTo]         = useState(null);
   const [muted,           setMuted]           = useState(false);
   const [deafened,        setDeafened]        = useState(false);
-  const [loading,         setLoading]         = useState(true);
 
-  // Fetch community channels from backend
-  useEffect(() => {
-    async function fetchChannels() {
-      if (!communityId) {
-        setActiveChannel({ id: 'general', name: 'general', topic: 'The main hub 👋' });
-        setLoading(false);
-        return;
-      }
-      try {
-        const comm = await apiRequest(`/communities/${communityId}`);
-        if (comm && Array.isArray(comm.channels) && comm.channels.length > 0) {
-          const parsed = comm.channels.map((c, idx) => ({
-            id:    typeof c === 'string' ? c : c.id || c.name || String(idx + 1),
-            name:  typeof c === 'string' ? c : c.name,
-            topic: typeof c === 'object' && c.topic ? c.topic : `#${typeof c === 'string' ? c : c.name} channel`,
-          }));
-          setChannels(parsed);
-          const found = parsed.find(c => c.name === initialChannel || c.id === initialChannel) || parsed[0];
-          if (found) setActiveChannel(found);
-        } else {
-          setActiveChannel({ id: 'general', name: 'general', topic: 'General discussion' });
-        }
-      } catch {}
-      setLoading(false);
-    }
-    fetchChannels();
-  }, [communityId, user.role, initialChannel]);
+  const showToast = (msg) => dispatch(toastShown({ msg }));
 
-  // Fetch community members
+  // Channels and members of this community
   useEffect(() => {
-    async function fetchMembers() {
-      if (!communityId) {
-        setMembers([]);
-        return;
-      }
-      try {
-        const [mems, usrs] = await Promise.all([
-          apiRequest(`/memberships?communityId=${communityId}`),
-          apiRequest(`/users?communityId=${communityId}`),
-        ]);
-        const userMap = new Map((Array.isArray(usrs) ? usrs : []).map(u => [String(u.id), u]));
-        const mappedMembers = (Array.isArray(mems) ? mems : []).map(m => {
-          const u = userMap.get(String(m.userId)) || {};
-          const mName = u.fullName || u.username || `User #${m.userId}`;
-          return {
-            name: mName,
-            userId: m.userId,
-            avatar: u.avatar,
-            role: u.role || 'Member',
-            status: u.status || 'active',
-            initials: mName.slice(0, 2).toUpperCase(),
-            color: '#6366f1',
-          };
-        });
-        setMembers(mappedMembers);
-      } catch {
-        setMembers([]);
-      }
+    if (!communityId) {
+      dispatch(chatCleared());
+      return;
     }
-    fetchMembers();
-  }, [communityId, user.role]);
+    let cancelled = false;
+    dispatch(fetchChatChannels(communityId)).unwrap()
+      .then((parsed) => {
+        if (cancelled) return;
+        setActiveChannel(parsed.length > 0
+          ? parsed.find(c => c.name === initialChannel || c.id === initialChannel) || parsed[0]
+          : { id: 'general', name: 'general', topic: 'General discussion' });
+      })
+      .catch(() => { /* keep the default channels */ });
+    dispatch(fetchChatMembers(communityId));
+    return () => { cancelled = true; };
+  }, [dispatch, communityId, initialChannel]);
 
-  // Fetch messages for the active channel of THIS community.
-  // Channel ids like "general" exist in every community, so we filter by
-  // both communityId and channelId (GET /messages?communityId=&channelId=).
-  // The old call /channels/:id/messages filtered by channel only and mixed
-  // messages from all communities.
+  // Messages of the active channel of THIS community
   useEffect(() => {
-    async function fetchMessages() {
-      if (!activeChannel?.id) return;
-      if (!communityId) {
-        setMessages([]); // no community selected -> nothing to show
-        return;
-      }
-      try {
-        const data = await apiRequest(
-          `/messages?communityId=${encodeURIComponent(communityId)}&channelId=${encodeURIComponent(activeChannel.id)}`
-        );
-        if (Array.isArray(data)) {
-          setMessages(data.map(m => {
-            const reactionsArr = toReactionList(m.reactions);
-            const authorName = m.authorName || m.author?.name || m.author || 'User';
-            return {
-              id:        m.id,
-              author:    authorName,
-              initials:  authorName.slice(0, 2).toUpperCase(),
-              color:     '#6366f1',
-              text:      m.content || '',
-              time:      m.createdAt
-                ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : '',
-              reactions: reactionsArr,
-            };
-          }));
-        } else {
-          setMessages([]);
-        }
-      } catch {
-        setMessages([]);
-      }
-    }
-    fetchMessages();
-  }, [activeChannel?.id, communityId, user.role]);
+    if (!communityId || !activeChannel?.id) return;
+    dispatch(fetchChatMessages({ communityId, channelId: activeChannel.id }));
+  }, [dispatch, communityId, activeChannel?.id]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -178,61 +105,30 @@ export default function useChat() {
     // communityId fell back to community 1, so messages ended up there.
     if (!text || !activeChannel?.id || !communityId) return;
 
-    const fullContent  = replyTo ? `↩️ ${replyTo}: ${text}` : text;
-    const authorName   = user.username || user.firstName || 'User';
-    const tempMsg = {
-      id:        Date.now(),
-      author:    authorName,
-      initials:  authorName.slice(0, 2).toUpperCase(),
-      color:     '#34d399',
-      text:      fullContent,
-      time:      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      reactions: [],
-    };
-
-    setMessages(prev => [...prev, tempMsg]);
+    const content = replyTo ? `↩️ ${replyTo}: ${text}` : text;
     setMsgInput('');
     setReplyTo(null);
 
     try {
-      const created = await apiRequest('/messages', {
-        method:  'POST',
-        body:    JSON.stringify({
-          channelId:  String(activeChannel.id),
-          content:    fullContent,
-          communityId: Number(communityId),
-          authorId:   user?.id ? Number(user.id) : undefined,
-          authorName,
-        }),
-      });
-      if (created && created.id) {
-        setMessages(prev =>
-          prev.map(m => m.id === tempMsg.id ? { ...m, id: created.id } : m)
-        );
-      }
+      await dispatch(sendChatMessage({
+        communityId,
+        channelId: activeChannel.id,
+        content,
+        authorName: user.username || user.firstName || 'User',
+        sentAt: new Date().toISOString(),
+      })).unwrap();
     } catch (err) {
-      console.error('Failed to send message:', err);
+      // The slice has removed the message again; give the text back to retry
+      setMsgInput(prev => prev || text);
+      showToast(`⚠️ Message not sent: ${err.message}`);
     }
   };
 
-  // The backend toggles: first click adds your reaction, second click removes
-  // it. It returns the updated message, so we show its real reaction counts
-  // instead of guessing "+1" locally.
   const toggleReaction = async (msgId, emoji) => {
     try {
-      const updated = await apiRequest(`/messages/${msgId}/reactions`, {
-        method:  'POST',
-        body:    JSON.stringify({
-          emoji,
-          actorId:   user?.id ? Number(user.id) : undefined,
-          actorName: user.username || user.firstName,
-        }),
-      });
-      setMessages(prev => prev.map(m =>
-        m.id === msgId ? { ...m, reactions: toReactionList(updated?.reactions) } : m
-      ));
+      await dispatch(toggleChatReaction({ msgId, emoji, actorName: user.username || user.firstName })).unwrap();
     } catch (err) {
-      console.error('Failed to react:', err);
+      showToast(`⚠️ ${err.message}`);
     }
   };
 
