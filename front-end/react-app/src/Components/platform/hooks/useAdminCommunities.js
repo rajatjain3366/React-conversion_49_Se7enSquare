@@ -4,13 +4,16 @@ import { apiRequest } from '../../../services/api';
 /**
  * Manages community list fetch and admin suspend/reinstate actions.
  * POST /admin/communities/:id/suspend|reinstate from AdminCommunitiesController.
+ * Each successful action is reported to onAudit.
  */
-export default function useAdminCommunities(showToast) {
+export default function useAdminCommunities(showToast, onAudit) {
   const [communities, setCommunities] = useState([]);
   const showToastRef = useRef(showToast);
+  const onAuditRef = useRef(onAudit);
   useEffect(() => {
     showToastRef.current = showToast;
-  }, [showToast]);
+    onAuditRef.current = onAudit;
+  }, [showToast, onAudit]);
 
   const refreshCommunities = useCallback(async () => {
     try {
@@ -34,6 +37,7 @@ export default function useAdminCommunities(showToast) {
         body: JSON.stringify({ reason: r.trim() }),
       });
       showToastRef.current?.(`⚠️ Community suspended`);
+      onAuditRef.current?.('Community Suspended', community?.name || `community #${communityId}`, r.trim());
       await refreshCommunities();
     } catch (err) {
       showToastRef.current?.(`❌ ${err.message}`);
@@ -49,6 +53,7 @@ export default function useAdminCommunities(showToast) {
         body: JSON.stringify({ reason: 'Reinstated by admin' }),
       });
       showToastRef.current?.('✓ Community reinstated');
+      onAuditRef.current?.('Community Reinstated', community?.name || `community #${communityId}`, 'Reinstated by admin');
       await refreshCommunities();
     } catch (err) {
       showToastRef.current?.(`❌ ${err.message}`);

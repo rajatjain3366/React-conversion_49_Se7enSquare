@@ -6,6 +6,7 @@ import useToast from '../Components/platform/hooks/useToast';
 import useAdminUsers from './AdminDashboard/hooks/useAdminUsers';
 import useAdminCommunities from './AdminDashboard/hooks/useAdminCommunities';
 import useAdminModeration from './AdminDashboard/hooks/useAdminModeration';
+import useAuditLog from './AdminDashboard/hooks/useAuditLog';
 import { PAGES } from '../Components/platform/data/adminData';
 import AdminHeader from './AdminDashboard/components/AdminHeader';
 import AdminNav from './AdminDashboard/components/AdminNav';
@@ -16,6 +17,7 @@ import EscalatedReportsTab from './AdminDashboard/components/EscalatedReportsTab
 import EventsTab from './AdminDashboard/components/EventsTab';
 import AppealsTab from './AdminDashboard/components/AppealsTab';
 import ApplicationsTab from './AdminDashboard/components/ApplicationsTab';
+import AuditLogTab from './AdminDashboard/components/AuditLogTab';
 import { apiRequest, getStoredUser } from '../services/api';
 import '../styles/global.css';
 import '../styles/sidebar.css';
@@ -38,7 +40,7 @@ function getAdminUser() {
 /**
  * Admin Dashboard Page Component
  * Orchestrates sub-hooks and subcomponents for platform administration:
- * Overview, Users, Communities, Escalated Reports, Events, Appeals, and Applications.
+ * Overview, Users, Communities, Escalated Reports, Events, Appeals, Applications, and Audit Log.
  */
 export default function AdminDashboard() {
   const adminUser = getAdminUser();
@@ -63,6 +65,9 @@ export default function AdminDashboard() {
   const { toast, showToast } = useToast();
   const notify = useCallback((msg) => showToast('ℹ️', msg), [showToast]);
 
+  // Declared before the action hooks so each successful action can write an audit entry
+  const { auditLog, addAuditLog } = useAuditLog(adminUser.username);
+
   const {
     users,
     setUsers,
@@ -78,7 +83,7 @@ export default function AdminDashboard() {
     suspendUser,
     banUser,
     reinstateUser,
-  } = useAdminUsers(notify);
+  } = useAdminUsers(notify, addAuditLog);
 
   const {
     communities,
@@ -86,7 +91,7 @@ export default function AdminDashboard() {
     refreshCommunities,
     suspendCommunity,
     reinstateCommunity,
-  } = useAdminCommunities(notify);
+  } = useAdminCommunities(notify, addAuditLog);
 
   const {
     reports,
@@ -102,7 +107,7 @@ export default function AdminDashboard() {
     handleAppeal,
     handleOrganizerApp,
     handleModeratorApp,
-  } = useAdminModeration(notify, refreshUsers);
+  } = useAdminModeration(notify, refreshUsers, addAuditLog);
 
   // Load backend stats once on mount
   useEffect(() => {
@@ -149,6 +154,7 @@ export default function AdminDashboard() {
         {activePage === 'overview' && (
           <OverviewTab
             stats={stats}
+            auditLog={auditLog}
             onNavigate={handleSelectPage}
           />
         )}
@@ -202,6 +208,8 @@ export default function AdminDashboard() {
             onModeratorApp={handleModeratorApp}
           />
         )}
+
+        {activePage === 'audit' && <AuditLogTab auditLog={auditLog} />}
       </div>
 
       <Toast toast={toast} />

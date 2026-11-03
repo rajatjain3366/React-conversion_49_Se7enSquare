@@ -5,9 +5,9 @@ import { appealService } from '../../../services/appealService';
 /**
  * Custom hook managing reports queue, appeals, events, and organizer/moderator applications.
  * All mutations call the backend first, await confirmation, show server error on failure,
- * and refetch the updated lists. No optimistic updates.
+ * and refetch the updated lists. No optimistic updates. Each successful action is reported to onAudit.
  */
-export default function useAdminModeration(showToast, onUserUpdated) {
+export default function useAdminModeration(showToast, onUserUpdated, onAudit) {
   const [reports, setReports] = useState([]);
   const [events, setEvents] = useState([]);
   const [appeals, setAppeals] = useState([]);
@@ -16,9 +16,11 @@ export default function useAdminModeration(showToast, onUserUpdated) {
 
   const showToastRef = useRef(showToast);
   const onUserUpdatedRef = useRef(onUserUpdated);
+  const onAuditRef = useRef(onAudit);
   useEffect(() => {
     showToastRef.current = showToast;
     onUserUpdatedRef.current = onUserUpdated;
+    onAuditRef.current = onAudit;
   });
 
   const refreshReports = useCallback(async () => {
@@ -89,6 +91,11 @@ export default function useAdminModeration(showToast, onUserUpdated) {
 
   const handleModerationAction = useCallback(async (item, actionType, note) => {
     const resolutionNote = (note || '').trim();
+    // EscalatedReportsTab passes the report enriched with the target user object
+    const reportTarget = item.target?.username
+      ? `@${item.target.username} · report #${item.id}`
+      : `report #${item.id}`;
+    const logAudit = (action, reason) => onAuditRef.current?.(action, reportTarget, reason);
 
     try {
       if (actionType === 'dismiss') {
@@ -101,6 +108,7 @@ export default function useAdminModeration(showToast, onUserUpdated) {
           body: JSON.stringify({ status: 'resolved', resolutionNote }),
         });
         showToastRef.current?.('✓ Report dismissed');
+        logAudit('Report Dismissed', resolutionNote);
       } else if (actionType === 'warn') {
         const reason = resolutionNote || 'Official warning following escalated report';
         await apiRequest('/sanctions', {
@@ -118,6 +126,7 @@ export default function useAdminModeration(showToast, onUserUpdated) {
           body: JSON.stringify({ status: 'resolved', resolutionNote: reason }),
         });
         showToastRef.current?.('⚠️ Warning issued and report resolved');
+        logAudit('Warning Issued', reason);
       } else if (actionType === 'remove_content') {
         const reason = resolutionNote || 'Content removed following escalated report';
         await apiRequest('/sanctions', {
@@ -135,6 +144,7 @@ export default function useAdminModeration(showToast, onUserUpdated) {
           body: JSON.stringify({ status: 'resolved', resolutionNote: reason }),
         });
         showToastRef.current?.('🗑️ Content marked removed and author sanctioned');
+        logAudit('Content Removed', reason);
       } else if (actionType === 'suspend_author') {
         const reason = resolutionNote || 'Author suspended following escalated report';
         await apiRequest(`/users/${item.targetId}/suspend`, {
@@ -146,6 +156,7 @@ export default function useAdminModeration(showToast, onUserUpdated) {
           body: JSON.stringify({ status: 'resolved', resolutionNote: reason }),
         });
         showToastRef.current?.('⚠️ Author suspended and report resolved');
+        logAudit('Author Suspended', reason);
         if (onUserUpdatedRef.current) onUserUpdatedRef.current();
       } else if (actionType === 'ban_author') {
         const reason = resolutionNote || 'Author permanently banned following escalated report';
@@ -158,6 +169,7 @@ export default function useAdminModeration(showToast, onUserUpdated) {
           body: JSON.stringify({ status: 'resolved', resolutionNote: reason }),
         });
         showToastRef.current?.('⛔ Author permanently banned');
+        logAudit('Author Banned', reason);
         if (onUserUpdatedRef.current) onUserUpdatedRef.current();
       }
 
@@ -171,6 +183,7 @@ export default function useAdminModeration(showToast, onUserUpdated) {
     try {
       await appealService.reviewAppeal(appealId, status);
       showToastRef.current?.(`✓ Appeal ${status}`);
+      onAuditRef.current?.(status === 'approved' ? 'Appeal Approved' : 'Appeal Rejected', `appeal #${appealId}`);
       await refreshAppeals();
     } catch (err) {
       showToastRef.current?.(`❌ ${err.message}`);
@@ -187,11 +200,17 @@ export default function useAdminModeration(showToast, onUserUpdated) {
         body: JSON.stringify({ status, rejectionReason }),
       });
       showToastRef.current?.(`Application ${status}`);
+      const applicant = organizerApps.find((a) => a.id === id)?.user;
+      onAuditRef.current?.(
+        status === 'verified' ? 'Organizer Application Approved' : 'Organizer Application Rejected',
+        applicant ? `@${applicant}` : `application #${id}`,
+        rejectionReason
+      );
       await refreshApps();
     } catch (err) {
       showToastRef.current?.(`❌ ${err.message}`);
     }
-  }, [refreshApps]);
+  }, [refreshApps, organizerApps]);
 
   const handleModeratorApp = useCallback(async (id, newStatus) => {
     const status = newStatus === 'approved' ? 'certified' : 'rejected';
@@ -203,11 +222,17 @@ export default function useAdminModeration(showToast, onUserUpdated) {
         body: JSON.stringify({ status, rejectionReason }),
       });
       showToastRef.current?.(`Application ${status}`);
+      const applicant = moderatorApps.find((a) => a.id === id)?.user;
+      onAuditRef.current?.(
+        status === 'certified' ? 'Moderator Application Approved' : 'Moderator Application Rejected',
+        applicant ? `@${applicant}` : `application #${id}`,
+        rejectionReason
+      );
       await refreshApps();
     } catch (err) {
       showToastRef.current?.(`❌ ${err.message}`);
     }
-  }, [refreshApps]);
+  }, [refreshApps, moderatorApps]);
 
   return {
     reports,
