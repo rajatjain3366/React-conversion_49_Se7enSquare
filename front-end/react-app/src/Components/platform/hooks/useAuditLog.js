@@ -2,60 +2,55 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '../../../services/api';
 
 /**
- * Custom hook managing the administrative audit log feed with genuine backend persistence.
+ * Custom hook managing the administrative audit log (GET/POST /audit-log).
+ * Like the other admin hooks, a new entry is posted first and the list is
+ * refetched, so the table only shows what the backend actually stored.
  */
-export default function useAuditLog(adminUsername = 'admin01') {
+export default function useAuditLog(adminUsername = 'admin') {
   const [auditLog, setAuditLog] = useState([]);
 
+  const refreshAuditLog = useCallback(async () => {
+    try {
+      const data = await apiRequest('/audit-log');
+      const rows = Array.isArray(data) ? [...data] : [];
+      // Seed rows are stored oldest-first while new rows are prepended, so sort newest-first here
+      rows.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      setAuditLog(
+        rows.map((l) => ({
+          id: l.id,
+          time: l.createdAt
+            ? new Date(l.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+            : '—',
+          admin: l.actor || 'system',
+          action: l.action,
+          target: l.target || 'general',
+          reason: l.reason || '',
+        }))
+      );
+    } catch { /* keep current */ }
+  }, []);
+
+  // Initial load once on mount
   useEffect(() => {
-    let cancelled = false;
-    async function fetchAuditLog() {
-      try {
-        const data = await apiRequest('/audit-log');
-        if (!cancelled && Array.isArray(data)) {
-          setAuditLog(
-            data.map((l) => ({
-              id: l.id,
-              time: l.createdAt
-                ? new Date(l.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : 'Just now',
-              admin: l.actor || adminUsername,
-              action: l.action,
-              type: l.target || 'general',
-            }))
-          );
-        }
-      } catch {}
-    }
-    fetchAuditLog();
-    return () => { cancelled = true; };
-  }, [adminUsername]);
+    refreshAuditLog();
+  }, [refreshAuditLog]);
 
-  const addAuditLog = useCallback(
-    async (action, type = 'general') => {
-      const newEntry = {
-        id: Date.now(),
-        time: 'Just now',
-        admin: adminUsername,
-        action,
-        type,
-      };
-      setAuditLog((prev) => [newEntry, ...prev]);
+  // Called after an admin action has already succeeded, so a failed log write is
+  // swallowed instead of reported as if the action itself had failed.
+  const addAuditLog = useCallback(async (action, target, reason) => {
+    try {
+      await apiRequest('/audit-log', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: String(action).slice(0, 100),
+          actor: String(adminUsername).slice(0, 60),
+          ...(target ? { target: String(target).slice(0, 100) } : {}),
+          ...(reason ? { reason: String(reason).slice(0, 200) } : {}),
+        }),
+      });
+      await refreshAuditLog();
+    } catch { /* keep current */ }
+  }, [adminUsername, refreshAuditLog]);
 
-      try {
-        await apiRequest('/audit-log', {
-          method: 'POST',
-          body: JSON.stringify({
-            action: action.slice(0, 95),
-            actor: adminUsername,
-            target: type.slice(0, 95),
-            reason: 'Administrative activity',
-          }),
-        });
-      } catch {}
-    },
-    [adminUsername]
-  );
-
-  return { auditLog, setAuditLog, addAuditLog };
+  return { auditLog, refreshAuditLog, addAuditLog };
 }

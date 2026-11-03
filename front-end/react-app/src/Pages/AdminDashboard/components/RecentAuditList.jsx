@@ -34,7 +34,7 @@ export default function RecentAuditList({ auditLog, onNavigate }) {
                   By @{item.admin} • {item.time}
                 </div>
               </div>
-              <span className="admin-badge-role">{item.type}</span>
+              <span className="admin-badge-role">{item.target}</span>
             </div>
           ))
         )}

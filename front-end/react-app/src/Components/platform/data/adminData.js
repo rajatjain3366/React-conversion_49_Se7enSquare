@@ -6,8 +6,8 @@ export const PAGES = [
   { id: 'events-mgmt',       icon: '📅',  title: 'Events' },
   { id: 'appeals',           icon: '⚖️',  title: 'Appeals' },
   { id: 'applications',      icon: '📋',  title: 'Applications' },
-  // Audit Log, Configuration, and Moderation tabs removed:
-  // - Audit Log: no persistent audit endpoint; local-only events are not meaningful across sessions.
+  { id: 'audit',             icon: '📜',  title: 'Audit Log' },
+  // Configuration and Moderation tabs removed:
   // - Configuration: platformConfig has no frontend consumers beyond GET display; no real PATCH consumers.
   // - Moderation: replaced by "Escalated Reports" which shows only status=escalated rows.
 ];
