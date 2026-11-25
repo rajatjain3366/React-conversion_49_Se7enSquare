@@ -70,8 +70,8 @@ export const fetchCommunityList = createAsyncThunk(
   {
     condition: (force = false, { getState }) => {
       if (force) return true;
-      const { all, listLoading, lastFetched } = getState().communities;
-      if (listLoading) return false;
+      const { all, listFetching, lastFetched } = getState().communities;
+      if (listFetching) return false;
       const isFresh = lastFetched && Date.now() - lastFetched < LIST_CACHE_MS;
       return !(all.length > 0 && isFresh);
     },
@@ -274,6 +274,7 @@ const initialState = {
   // Pure in-memory variables:
   all: [],
   listLoading: true,
+  listFetching: false,
   listError: '',
   lastFetched: null,
   joinedIds: [],               // Zero localStorage: populated via fetchMyMemberships
@@ -351,15 +352,18 @@ const communitiesSlice = createSlice({
     builder
       // ── [READ ALL] Community List ────────────────────────────────────────
       .addCase(fetchCommunityList.pending, (state) => {
+        state.listFetching = true;
         state.listLoading = true;
       })
       .addCase(fetchCommunityList.fulfilled, (state, action) => {
+        state.listFetching = false;
         state.listLoading = false;
         state.all = action.payload;
         state.listError = '';
         state.lastFetched = Date.now();
       })
       .addCase(fetchCommunityList.rejected, (state, action) => {
+        state.listFetching = false;
         state.listLoading = false;
         state.all = [];
         state.listError = action.error.message || 'Could not load communities.';

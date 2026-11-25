@@ -176,15 +176,19 @@ export function useOrganizerData() {
     }
 
     const payload = {
-      ...formData,
-      status: finalStatus,
+      title: formData.title.trim(),
+      description: formData.description.trim(),
       communityId: Number(formData.communityId),
+      date: formData.date,
+      time: formData.time || '6:00 PM',
       maxAttendees: Number(formData.maxAttendees) || 100,
       entryFee: Number(formData.entryFee) || 0,
       prizePool: Number(formData.prizePool) || 0,
+      ...(formData.category ? { category: formData.category } : {}),
+      status: finalStatus,
       type: 'tournament',
       createdBy: currentUser?.username || currentUser?.name || 'organizer',
-      organiserId: currentUser?.id,
+      ...(currentUser?.id ? { organiserId: Number(currentUser.id) } : {}),
     };
 
     try {

@@ -34,8 +34,8 @@ export const fetchEvents = createAsyncThunk(
   {
     condition: (force = false, { getState }) => {
       if (force) return true;
-      const { items, loading, lastFetched } = getState().events;
-      if (loading) return false;
+      const { items, fetching, lastFetched } = getState().events;
+      if (fetching) return false;
       const isFresh = lastFetched && Date.now() - lastFetched < LIST_CACHE_MS;
       if (items.length > 0 && isFresh) return false;
       return true;
@@ -253,11 +253,9 @@ export const initialCreateEventForm = {
   time: '',
   category: 'Tournament',
   communityId: '',
-  maxParticipants: 100,
+  maxAttendees: 100,
   entryFee: 0,
-  prizePool: '',
-  rules: '',
-  banner: '',
+  prizePool: 0,
   status: 'pending',
 };
 
@@ -272,6 +270,7 @@ const initialState = {
   items: [],
   currentEvent: null,
   loading: true,
+  fetching: false,
   loaded: false,
   error: null,
   lastFetched: null,
@@ -389,10 +388,12 @@ const eventsSlice = createSlice({
     builder
       // fetchEvents
       .addCase(fetchEvents.pending, (state) => {
+        state.fetching = true;
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchEvents.fulfilled, (state, action) => {
+        state.fetching = false;
         state.loading = false;
         state.loaded = true;
         state.items = action.payload;
@@ -400,6 +401,7 @@ const eventsSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchEvents.rejected, (state, action) => {
+        state.fetching = false;
         state.loading = false;
         state.error = action.payload?.message || action.error?.message || 'Failed to fetch events';
       })
